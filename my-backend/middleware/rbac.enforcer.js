@@ -17,7 +17,7 @@ const ROLE_LEVELS = {
   CLIENT: 1,
 };
 
-// Routes that bypass RBAC (public routes)
+// Routes that bypass RBAC (public routes or routes with their own access control)
 // Note: Paths here should NOT include /api prefix since middleware is mounted at /api
 const PUBLIC_ROUTES = [
   '/auth/login',
@@ -35,6 +35,8 @@ const PUBLIC_ROUTES = [
   '/subscription-plans',          // Alternative plans endpoint
   '/micro-unlock/access',         // Feature access check - authenticated but no RBAC
   '/micro-unlock/check',          // Feature access check - authenticated but no RBAC
+  '/v2/tasks',                    // Task management - has planModuleAccessMiddleware
+  '/tasks',                       // Legacy task routes - has own auth
 ];
 
 /**
