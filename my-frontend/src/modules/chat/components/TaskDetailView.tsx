@@ -190,34 +190,64 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/tasks/${taskId}/quick-view`, {
+      // Try quick-view first, fall back to v2 task endpoint
+      let response = await fetch(`/api/tasks/${taskId}/quick-view`, {
         credentials: 'include',
       });
 
+      // If quick-view fails, try v2 tasks endpoint
       if (!response.ok) {
-        throw new Error('Failed to fetch task');
+        console.log('[TaskDetailView] quick-view failed, trying v2 endpoint');
+        response = await fetch(`/api/v2/tasks/${taskId}`, {
+          credentials: 'include',
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Failed to fetch task');
       }
 
       const data = await response.json();
       const taskInfo = data.task || data.data || data;
       
       // Fetch attachments separately if not included
-      let attachments: TaskAttachment[] = [];
-      try {
-        const attachRes = await fetch(`/api/tasks/${taskId}/attachments`, {
-          credentials: 'include',
-        });
-        if (attachRes.ok) {
-          const attachData = await attachRes.json();
-          attachments = attachData.data || attachData || [];
+      let attachments: TaskAttachment[] = taskInfo.attachments || [];
+      let messages: TaskMessage[] = data.messages || taskInfo.messages || [];
+      
+      // Fetch messages if not included in response
+      if (!messages.length) {
+        try {
+          const msgRes = await fetch(`/api/v2/tasks/${taskId}/messages`, {
+            credentials: 'include',
+          });
+          if (msgRes.ok) {
+            const msgData = await msgRes.json();
+            messages = msgData.messages || msgData.data || msgData || [];
+          }
+        } catch (e) {
+          console.warn('[TaskDetailView] Could not fetch messages:', e);
         }
-      } catch (e) {
-        console.warn('Could not fetch attachments');
+      }
+      
+      // Fetch attachments if not included
+      if (!attachments.length) {
+        try {
+          const attachRes = await fetch(`/api/v2/tasks/${taskId}/attachments`, {
+            credentials: 'include',
+          });
+          if (attachRes.ok) {
+            const attachData = await attachRes.json();
+            attachments = attachData.data || attachData.attachments || attachData || [];
+          }
+        } catch (e) {
+          console.warn('[TaskDetailView] Could not fetch attachments:', e);
+        }
       }
 
       setTask({
         ...taskInfo,
-        messages: data.messages || [],
+        messages: messages,
         attachments: attachments,
       });
     } catch (err) {
