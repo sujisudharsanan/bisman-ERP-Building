@@ -24,41 +24,12 @@ const getDbPool = () => {
 };
 
 /**
- * Resolve user ID (UUID to legacy integer ID)
- * The workflow_tasks table uses integer user IDs, but auth returns UUID.
- * This helper looks up the legacy_id from users_enhanced for UUID users.
+ * Resolve user ID - now just returns the ID as-is since we've migrated to UUID/TEXT
+ * Previously converted UUID to legacy integer ID, but workflow_tasks now uses TEXT columns.
  */
 const resolveUserId = async (rawId, client = null) => {
-  if (!rawId) return null;
-  
-  // If it's already a valid integer, return it
-  const parsedInt = parseInt(rawId);
-  if (!isNaN(parsedInt) && parsedInt > 0 && String(parsedInt) === String(rawId)) {
-    return parsedInt;
-  }
-  
-  // Check if it's a UUID (36 char format with dashes)
-  const isUUID = typeof rawId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
-  
-  if (isUUID) {
-    try {
-      // Look up legacy_id from users_enhanced table
-      const pool = client || getDbPool();
-      const result = await pool.query(
-        'SELECT legacy_id FROM users_enhanced WHERE id = $1',
-        [rawId]
-      );
-      if (result.rows.length > 0 && result.rows[0].legacy_id) {
-        return result.rows[0].legacy_id;
-      }
-      console.warn(`[resolveUserId] UUID ${rawId} has no legacy_id mapping`);
-    } catch (e) {
-      console.error('[resolveUserId] Lookup failed:', e.message);
-    }
-    return null;
-  }
-  
-  return null;
+  // Simply return the ID as-is - workflow_tasks now accepts TEXT/UUID
+  return rawId || null;
 };
 
 // Task Status enum
@@ -185,14 +156,14 @@ const listTasks = async (req, res) => {
     if (assigneeId) {
       paramCount++;
       query += ` AND t.assignee_id = $${paramCount}`;
-      params.push(parseInt(assigneeId));
+      params.push(assigneeId);  // UUID string
     }
     
     // Creator filter
     if (creatorId) {
       paramCount++;
       query += ` AND t.creator_id = $${paramCount}`;
-      params.push(parseInt(creatorId));
+      params.push(creatorId);  // UUID string
     }
     
     // Priority filter
