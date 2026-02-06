@@ -111,11 +111,15 @@ router.get('/check-page', authenticate, async (req, res) => {
       }
     }
 
-    // Regular users: Check role_page_access table (userPage table doesn't exist)
+    // Regular users: Check RBAC permissions via rbac_permissions + rbac_routes
     const [pageAccess] = await prisma.$queryRaw`
-      SELECT 1 FROM role_page_access rpa
-      INNER JOIN users_enhanced u ON u.role = rpa.role_name
-      WHERE u.id = ${userId}::uuid AND rpa.page_key = ${pageId}
+      SELECT 1 FROM rbac_permissions rp
+      INNER JOIN rbac_roles rr ON rr.id = rp.role_id
+      INNER JOIN rbac_routes rt ON rt.id = rp.route_id
+      INNER JOIN users_enhanced u ON u.role = rr.name
+      WHERE u.id = ${userId}::uuid 
+      AND (rt.path = ${pageId} OR rt.name = ${pageId} OR rt.path LIKE ${`%${pageId}%`})
+      AND rp.granted = true
       LIMIT 1
     `;
 

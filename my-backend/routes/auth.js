@@ -706,7 +706,7 @@ const getPermissionsHandler = async (req, res) => {
     }
 
     const allPages = [
-      ...(user.pagePermissions || []),
+      ...(user.page_permissions || []),
       ...rbacPages
     ];
 
@@ -719,8 +719,8 @@ const getPermissionsHandler = async (req, res) => {
         role: user.role,
         userType: 'USER',
         permissions: {
-          assignedModules: user.assignedModules || [],
-          pagePermissions: user.pagePermissions || {},
+          assignedModules: user.assigned_modules || [],
+          pagePermissions: user.page_permissions || {},
           allPages: [...new Set(allPages)]
         }
       }

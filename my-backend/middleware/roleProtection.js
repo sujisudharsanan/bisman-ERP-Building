@@ -193,17 +193,16 @@ const requireModuleAccess = (moduleName) => {
       }
     }
 
-    // Regular users: Check user_permissions table
+    // Regular users: Check RBAC permissions
     try {
-      // Use role_page_access for permission check (userPermission table doesn't exist)
-      
-      // Note: userPermission table doesn't exist - using role_page_access via raw query
-      // TODO: Implement proper RBAC check using role_page_access
+      // Use actual RBAC tables: rbac_roles → rbac_permissions → rbac_routes
       const hasAccess = await prisma.$queryRaw`
-        SELECT 1 FROM role_page_access rpa
-        INNER JOIN pages_master pm ON pm.id = rpa.page_id
-        WHERE rpa.role_name = ${req.user.role}
-        AND pm.route LIKE ${`%${moduleName}%`}
+        SELECT 1 FROM rbac_permissions rp
+        INNER JOIN rbac_roles rr ON rr.id = rp.role_id
+        INNER JOIN rbac_routes rt ON rt.id = rp.route_id
+        WHERE rr.name = ${req.user.role}
+        AND rt.path LIKE ${`%${moduleName}%`}
+        AND rp.granted = true
         LIMIT 1
       `;
 
@@ -300,15 +299,16 @@ const requirePageAccess = (pageId) => {
       }
     }
 
-    // Regular users: Check user_pages table (database-approved pages)
+    // Regular users: Check RBAC permissions for page access
     try {
-      // ✅ SECURITY FIX: Use role_page_access for page permission check
-      // Note: userPage table doesn't exist - using role_page_access via raw query
+      // Use actual RBAC tables: rbac_roles → rbac_permissions → rbac_routes
       const hasAccess = await prisma.$queryRaw`
-        SELECT 1 FROM role_page_access rpa
-        INNER JOIN pages_master pm ON pm.id = rpa.page_id
-        WHERE rpa.role_name = ${req.user.role}
-        AND (pm.page_code = ${pageId} OR pm.route = ${pageId})
+        SELECT 1 FROM rbac_permissions rp
+        INNER JOIN rbac_roles rr ON rr.id = rp.role_id
+        INNER JOIN rbac_routes rt ON rt.id = rp.route_id
+        WHERE rr.name = ${req.user.role}
+        AND (rt.path = ${pageId} OR rt.name = ${pageId} OR rt.path LIKE ${`%${pageId}%`})
+        AND rp.granted = true
         LIMIT 1
       `;
 
