@@ -20,12 +20,22 @@ router.use(authenticate);
 
 /**
  * Get the user ID for chat/thread operations.
- * Thread/ThreadMember tables now use UUID for createdById/userId.
- * Returns the user's UUID id directly.
+ * Thread/ThreadMember tables use INTEGER for createdById/userId/senderId (legacy_id).
+ * Returns the user's legacy_id as INT.
  */
 function getChatUserId(req) {
-  // Return UUID id directly
-  return req.user.id;
+  // Return legacy_id as INT for chat tables
+  // users_enhanced has legacy_id as string, need to parse to int
+  if (req.user.legacy_id) {
+    return parseInt(req.user.legacy_id, 10);
+  }
+  // Fallback for legacy users table which may have integer id directly
+  if (typeof req.user.id === 'number') {
+    return req.user.id;
+  }
+  // Last fallback - try to parse id
+  const parsed = parseInt(req.user.id, 10);
+  return isNaN(parsed) ? null : parsed;
 }
 
 // ==================== THREADS ====================

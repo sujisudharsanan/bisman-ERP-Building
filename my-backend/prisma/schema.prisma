@@ -4492,14 +4492,15 @@ model tenant_usage {
 }
 
 model thread_members {
-  id       String    @id
-  threadId String
-  userId   String?   @db.Uuid
-  role     String    @default("member") @db.VarChar(50)
-  joinedAt DateTime  @default(now()) @db.Timestamp(6)
-  leftAt   DateTime?
-  isActive Boolean   @default(true)
-  threads  threads   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  id             String    @id
+  threadId       String    @db.Uuid
+  thread_id_old  String?
+  userId         Int?
+  role           String    @default("member") @db.VarChar(50)
+  joinedAt       DateTime  @default(now()) @db.Timestamp(6)
+  leftAt         DateTime?
+  isActive       Boolean   @default(true)
+  threads        threads   @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
   @@index([role], map: "idx_thread_members_role")
@@ -4508,13 +4509,16 @@ model thread_members {
 }
 
 model thread_messages {
-  id                    String            @id
-  threadId              String
-  senderId              String            @db.Uuid
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_old                String?
+  threadId              String            @map("thread_id") @db.Uuid
+  thread_id_old         String?
+  senderId              Int
   content               String
   type                  String            @default("text") @db.VarChar(50)
   attachments           Json?
-  replyToId             String?
+  replyToId             String?           @map("reply_to_id") @db.Uuid
+  reply_to_id_old       String?
   reactions             Json?
   isEdited              Boolean           @default(false)
   editedAt              DateTime?         @db.Timestamp(6)
@@ -4563,9 +4567,10 @@ model thread_messages_partitioned {
 }
 
 model threads {
-  id              String            @id
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_old          String?
   title           String?           @db.VarChar(200)
-  createdById     String?           @db.Uuid
+  createdById     Int?
   createdAt       DateTime          @default(now()) @db.Timestamp(6)
   updatedAt       DateTime          @default(now()) @db.Timestamp(6)
   call_logs       call_logs[]

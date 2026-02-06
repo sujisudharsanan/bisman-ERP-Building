@@ -7,6 +7,61 @@ const { getPrisma } = require('../../../lib/prisma');
 const prisma = getPrisma();
 
 /**
+ * Helper to fetch sender info by legacy_id (INT in chat tables, STRING in users_enhanced)
+ */
+async function getSenderInfo(senderId) {
+  if (!senderId) return null;
+  // legacy_id is stored as string in users_enhanced
+  const user = await prisma.users_enhanced.findFirst({
+    where: { legacy_id: String(senderId) },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      profile_pic_url: true,
+      role: true,
+      first_name: true,
+      last_name: true,
+      legacy_id: true
+    }
+  });
+  return user;
+}
+
+/**
+ * Enrich messages with sender data
+ */
+async function enrichMessagesWithSenders(messages) {
+  // Collect unique sender IDs (as strings for lookup)
+  const senderIds = [...new Set(messages.map(m => String(m.senderId)).filter(Boolean))];
+  
+  // Fetch all senders at once
+  const senders = await prisma.users_enhanced.findMany({
+    where: { legacy_id: { in: senderIds } },
+    select: {
+      id: true,
+      legacy_id: true,
+      username: true,
+      email: true,
+      profile_pic_url: true,
+      role: true,
+      first_name: true,
+      last_name: true
+    }
+  });
+  
+  // Create lookup map by legacy_id (string)
+  const senderMap = {};
+  senders.forEach(s => { senderMap[s.legacy_id] = s; });
+  
+  // Attach sender to each message (convert senderId to string for lookup)
+  return messages.map(m => ({
+    ...m,
+    sender: senderMap[String(m.senderId)] || null
+  }));
+}
+
+/**
  * Get messages for a thread with pagination
  */
 async function getThreadMessages(threadId, options = {}) {
@@ -25,25 +80,11 @@ async function getThreadMessages(threadId, options = {}) {
     prisma.thread_messages.findMany({
       where,
       include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            profile_pic_url: true,
-            role: true
-          }
-        },
-        replyTo: {
+        thread_messages: {  // replyTo
           select: {
             id: true,
             content: true,
-            sender: {
-              select: {
-                id: true,
-                username: true
-              }
-            }
+            senderId: true
           }
         }
       },
@@ -56,8 +97,23 @@ async function getThreadMessages(threadId, options = {}) {
     prisma.thread_messages.count({ where })
   ]);
 
+  // Enrich with sender data
+  const enrichedMessages = await enrichMessagesWithSenders(messages);
+  
+  // Also enrich reply sender if exists
+  for (const msg of enrichedMessages) {
+    if (msg.thread_messages?.senderId) {
+      msg.replyTo = {
+        id: msg.thread_messages.id,
+        content: msg.thread_messages.content,
+        sender: await getSenderInfo(msg.thread_messages.senderId)
+      };
+    }
+    delete msg.thread_messages;  // Clean up
+  }
+
   return {
-    messages: messages.reverse(), // Return in chronological order
+    messages: enrichedMessages.reverse(), // Return in chronological order
     total,
     hasMore: offset + limit < total
   };
@@ -84,31 +140,27 @@ async function createMessage(data) {
       type,
       attachments,
       replyToId
-    },
-    include: {
-      sender: {
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          profile_pic_url: true,
-          role: true
-        }
-      },
-      replyTo: {
-        select: {
-          id: true,
-          content: true,
-          sender: {
-            select: {
-              id: true,
-              username: true
-            }
-          }
-        }
-      }
     }
   });
+
+  // Fetch sender info
+  const sender = await getSenderInfo(senderId);
+  
+  // Fetch replyTo if exists
+  let replyTo = null;
+  if (replyToId) {
+    const replyMsg = await prisma.thread_messages.findUnique({
+      where: { id: replyToId },
+      select: { id: true, content: true, senderId: true }
+    });
+    if (replyMsg) {
+      replyTo = {
+        id: replyMsg.id,
+        content: replyMsg.content,
+        sender: await getSenderInfo(replyMsg.senderId)
+      };
+    }
+  }
 
   // Update thread's updatedAt timestamp
   await prisma.threads.update({
@@ -116,7 +168,7 @@ async function createMessage(data) {
     data: { updatedAt: new Date() }
   });
 
-  return message;
+  return { ...message, sender, replyTo };
 }
 
 /**
@@ -140,25 +192,19 @@ async function editMessage(messageId, userId, newContent) {
     throw new Error('Cannot edit deleted message');
   }
 
-  return await prisma.thread_messages.update({
+  const updated = await prisma.thread_messages.update({
     where: { id: messageId },
     data: {
       content: newContent,
       isEdited: true,
       editedAt: new Date(),
       updatedAt: new Date()
-    },
-    include: {
-      sender: {
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          profile_pic_url: true
-        }
-      }
     }
   });
+  
+  // Fetch sender info
+  const sender = await getSenderInfo(updated.senderId);
+  return { ...updated, sender };
 }
 
 /**
@@ -312,15 +358,7 @@ async function searchMessages(query, options = {}) {
   const messages = await prisma.thread_messages.findMany({
     where,
     include: {
-      sender: {
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          profile_pic_url: true
-        }
-      },
-      thread: {
+      threads: {
         select: {
           id: true,
           title: true
@@ -334,7 +372,10 @@ async function searchMessages(query, options = {}) {
     skip: offset
   });
 
-  return messages;
+  // Enrich with sender data
+  const enrichedMessages = await enrichMessagesWithSenders(messages);
+  
+  return enrichedMessages;
 }
 
 module.exports = {
