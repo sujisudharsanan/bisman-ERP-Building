@@ -37,25 +37,6 @@ const CRITICAL_TABLES = [
   'subscription_access_audit_log'
 ];
 
-const ID_COLUMN_PATTERNS = [
-  'id',
-  'user_id',
-  'tenant_id',
-  'creator_id',
-  'sender_id',
-  'branch_id',
-  'client_id',
-  'owner_id',
-  'assigned_to',
-  'approver_id',
-  'reviewer_id',
-  'created_by',
-  'updated_by',
-  'super_admin_id',
-  'parent_id',
-  'reports_to'
-];
-
 async function runAudit() {
   console.log('='.repeat(80));
   console.log('UUID MIGRATION AUDIT - Phase 1: Schema Analysis');

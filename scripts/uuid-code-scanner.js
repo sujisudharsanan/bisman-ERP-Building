@@ -79,7 +79,7 @@ function scanFile(filePath) {
         }
       });
     }
-  } catch (err) {
+  } catch {
     // Ignore read errors
   }
   
@@ -106,7 +106,7 @@ function scanDirectory(dir) {
         allIssues = allIssues.concat(fileIssues);
       }
     }
-  } catch (err) {
+  } catch {
     // Ignore directory access errors
   }
   

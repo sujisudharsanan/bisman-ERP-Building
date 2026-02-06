@@ -1,0 +1,344 @@
+============================================================
+FORENSIC DATABASE AUDIT
+============================================================
+
+--- COLUMNS & TYPES ---
+┌─────────┬─────────────────────────────────────┬─────────────────────┬───────────────────────────────┬─────────────┬───────────────┐
+│ (index) │ table_name                          │ column_name         │ data_type                     │ is_nullable │ udt_name      │
+├─────────┼─────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────┼───────────────┤
+│ 0       │ '_ClientToClientSequence'           │ 'A'                 │ 'uuid'                        │ 'NO'        │ 'uuid'        │
+│ 1       │ '_ClientToClientSequence'           │ 'B'                 │ 'integer'                     │ 'NO'        │ 'int4'        │
+│ 2       │ '_backup_053_chat_conversations'    │ 'context_type'      │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 3       │ '_backup_053_chat_conversations'    │ 'created_at'        │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 4       │ '_backup_053_chat_conversations'    │ 'id'                │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 5       │ '_backup_053_chat_conversations'    │ 'is_active'         │ 'boolean'                     │ 'YES'       │ 'bool'        │
+│ 6       │ '_backup_053_chat_conversations'    │ 'last_message_at'   │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 7       │ '_backup_053_chat_conversations'    │ 'metadata'          │ 'jsonb'                       │ 'YES'       │ 'jsonb'       │
+│ 8       │ '_backup_053_chat_conversations'    │ 'title'             │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 9       │ '_backup_053_chat_conversations'    │ 'updated_at'        │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 10      │ '_backup_053_chat_conversations'    │ 'user_id'           │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 11      │ '_backup_053_chat_messages'         │ 'content'           │ 'text'                        │ 'YES'       │ 'text'        │
+│ 12      │ '_backup_053_chat_messages'         │ 'conversation_id'   │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 13      │ '_backup_053_chat_messages'         │ 'corrected_from'    │ 'text'                        │ 'YES'       │ 'text'        │
+│ 14      │ '_backup_053_chat_messages'         │ 'created_at'        │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 15      │ '_backup_053_chat_messages'         │ 'entities'          │ 'jsonb'                       │ 'YES'       │ 'jsonb'       │
+│ 16      │ '_backup_053_chat_messages'         │ 'feedback'          │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 17      │ '_backup_053_chat_messages'         │ 'id'                │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 18      │ '_backup_053_chat_messages'         │ 'intent'            │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 19      │ '_backup_053_chat_messages'         │ 'is_correction'     │ 'boolean'                     │ 'YES'       │ 'bool'        │
+│ 20      │ '_backup_053_chat_messages'         │ 'response_metadata' │ 'jsonb'                       │ 'YES'       │ 'jsonb'       │
+│ 21      │ '_backup_053_chat_messages'         │ 'role'              │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 22      │ '_backup_053_chat_messages'         │ 'user_id'           │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 23      │ '_backup_053_rbac_user_permissions' │ 'created_at'        │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 24      │ '_backup_053_rbac_user_permissions' │ 'id'                │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 25      │ '_backup_053_rbac_user_permissions' │ 'page_key'          │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 26      │ '_backup_053_rbac_user_permissions' │ 'updated_at'        │ 'timestamp without time zone' │ 'YES'       │ 'timestamp'   │
+│ 27      │ '_backup_053_rbac_user_permissions' │ 'user_id'           │ 'text'                        │ 'YES'       │ 'text'        │
+│ 28      │ '_backup_053_task_messages'         │ 'content'           │ 'text'                        │ 'YES'       │ 'text'        │
+│ 29      │ '_backup_053_task_messages'         │ 'created_at'        │ 'timestamp with time zone'    │ 'YES'       │ 'timestamptz' │
+│ 30      │ '_backup_053_task_messages'         │ 'edited_at'         │ 'timestamp with time zone'    │ 'YES'       │ 'timestamptz' │
+│ 31      │ '_backup_053_task_messages'         │ 'id'                │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 32      │ '_backup_053_task_messages'         │ 'is_edited'         │ 'boolean'                     │ 'YES'       │ 'bool'        │
+│ 33      │ '_backup_053_task_messages'         │ 'is_system_message' │ 'boolean'                     │ 'YES'       │ 'bool'        │
+│ 34      │ '_backup_053_task_messages'         │ 'message_type'      │ 'character varying'           │ 'YES'       │ 'varchar'     │
+│ 35      │ '_backup_053_task_messages'         │ 'read_by'           │ 'ARRAY'                       │ 'YES'       │ '_int4'       │
+│ 36      │ '_backup_053_task_messages'         │ 'reply_to_id'       │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 37      │ '_backup_053_task_messages'         │ 'sender_id'         │ 'text'                        │ 'YES'       │ 'text'        │
+│ 38      │ '_backup_053_task_messages'         │ 'task_id'           │ 'integer'                     │ 'YES'       │ 'int4'        │
+│ 39      │ '_backup_053_task_messages'         │ 'tenant_id'         │ 'uuid'                        │ 'YES'       │ 'uuid'        │
+└─────────┴─────────────────────────────────────┴─────────────────────┴───────────────────────────────┴─────────────┴───────────────┘
+Total columns: 4574
+
+--- CONSTRAINTS ---
+┌─────────┬─────────────────────────────────┬─────────────────────────────────────────────────────┬─────────────────┬─────────────────────┐
+│ (index) │ table_name                      │ constraint_name                                     │ constraint_type │ column_name         │
+├─────────┼─────────────────────────────────┼─────────────────────────────────────────────────────┼─────────────────┼─────────────────────┤
+│ 0       │ '_ClientToClientSequence'       │ '32871_33206_1_not_null'                            │ 'CHECK'         │ null                │
+│ 1       │ '_ClientToClientSequence'       │ '32871_33206_2_not_null'                            │ 'CHECK'         │ null                │
+│ 2       │ '_ClientToClientSequence'       │ '_ClientToClientSequence_AB_pkey'                   │ 'PRIMARY KEY'   │ 'B'                 │
+│ 3       │ '_ClientToClientSequence'       │ '_ClientToClientSequence_AB_pkey'                   │ 'PRIMARY KEY'   │ 'A'                 │
+│ 4       │ '_ClientToClientSequence'       │ '_ClientToClientSequence_A_fkey'                    │ 'FOREIGN KEY'   │ 'A'                 │
+│ 5       │ '_ClientToClientSequence'       │ '_ClientToClientSequence_B_fkey'                    │ 'FOREIGN KEY'   │ 'B'                 │
+│ 6       │ '_legacy_users_backup_20260106' │ '32871_52049_6_not_null'                            │ 'CHECK'         │ null                │
+│ 7       │ '_prisma_migrations'            │ '32871_33209_1_not_null'                            │ 'CHECK'         │ null                │
+│ 8       │ '_prisma_migrations'            │ '32871_33209_2_not_null'                            │ 'CHECK'         │ null                │
+│ 9       │ '_prisma_migrations'            │ '32871_33209_4_not_null'                            │ 'CHECK'         │ null                │
+│ 10      │ '_prisma_migrations'            │ '32871_33209_7_not_null'                            │ 'CHECK'         │ null                │
+│ 11      │ '_prisma_migrations'            │ '32871_33209_8_not_null'                            │ 'CHECK'         │ null                │
+│ 12      │ '_prisma_migrations'            │ '_prisma_migrations_pkey'                           │ 'PRIMARY KEY'   │ 'id'                │
+│ 13      │ '_schema_info'                  │ '32871_49728_1_not_null'                            │ 'CHECK'         │ null                │
+│ 14      │ '_schema_info'                  │ '32871_49728_2_not_null'                            │ 'CHECK'         │ null                │
+│ 15      │ '_schema_info'                  │ '_schema_info_key_unique'                           │ 'UNIQUE'        │ 'key'               │
+│ 16      │ '_schema_info'                  │ '_schema_info_pkey'                                 │ 'PRIMARY KEY'   │ 'id'                │
+│ 17      │ 'access_requests'               │ '32871_59023_1_not_null'                            │ 'CHECK'         │ null                │
+│ 18      │ 'access_requests'               │ '32871_59023_2_not_null'                            │ 'CHECK'         │ null                │
+│ 19      │ 'access_requests'               │ '32871_59023_3_not_null'                            │ 'CHECK'         │ null                │
+│ 20      │ 'access_requests'               │ '32871_59023_4_not_null'                            │ 'CHECK'         │ null                │
+│ 21      │ 'access_requests'               │ '32871_59023_5_not_null'                            │ 'CHECK'         │ null                │
+│ 22      │ 'access_requests'               │ 'access_requests_pkey'                              │ 'PRIMARY KEY'   │ 'id'                │
+│ 23      │ 'access_requests'               │ 'fk_ar_tenant'                                      │ 'FOREIGN KEY'   │ 'tenant_id'         │
+│ 24      │ 'access_requests'               │ 'fk_ar_user'                                        │ 'FOREIGN KEY'   │ 'user_id'           │
+│ 25      │ 'admin_access_notifications'    │ '32871_59051_1_not_null'                            │ 'CHECK'         │ null                │
+│ 26      │ 'admin_access_notifications'    │ '32871_59051_2_not_null'                            │ 'CHECK'         │ null                │
+│ 27      │ 'admin_access_notifications'    │ '32871_59051_3_not_null'                            │ 'CHECK'         │ null                │
+│ 28      │ 'admin_access_notifications'    │ '32871_59051_4_not_null'                            │ 'CHECK'         │ null                │
+│ 29      │ 'admin_access_notifications'    │ '32871_59051_5_not_null'                            │ 'CHECK'         │ null                │
+│ 30      │ 'admin_access_notifications'    │ '32871_59051_6_not_null'                            │ 'CHECK'         │ null                │
+│ 31      │ 'admin_access_notifications'    │ 'admin_access_notifications_access_request_id_fkey' │ 'FOREIGN KEY'   │ 'access_request_id' │
+│ 32      │ 'admin_access_notifications'    │ 'admin_access_notifications_pkey'                   │ 'PRIMARY KEY'   │ 'id'                │
+│ 33      │ 'admin_page_assignments'        │ '32871_57346_1_not_null'                            │ 'CHECK'         │ null                │
+│ 34      │ 'admin_page_assignments'        │ '32871_57346_2_not_null'                            │ 'CHECK'         │ null                │
+│ 35      │ 'admin_page_assignments'        │ '32871_57346_3_not_null'                            │ 'CHECK'         │ null                │
+│ 36      │ 'admin_page_assignments'        │ '32871_57346_4_not_null'                            │ 'CHECK'         │ null                │
+│ 37      │ 'admin_page_assignments'        │ '32871_57346_5_not_null'                            │ 'CHECK'         │ null                │
+│ 38      │ 'admin_page_assignments'        │ '32871_57346_7_not_null'                            │ 'CHECK'         │ null                │
+│ 39      │ 'admin_page_assignments'        │ '32871_57346_9_not_null'                            │ 'CHECK'         │ null                │
+└─────────┴─────────────────────────────────┴─────────────────────────────────────────────────────┴─────────────────┴─────────────────────┘
+Total constraints: 2652
+
+--- INDEXES ---
+┌─────────┬──────────────────────────────┬───────────────────────────────────────────────────────────────────┬─────────────────┬───────────┐
+│ (index) │ table_name                   │ index_name                                                        │ column_name     │ is_unique │
+├─────────┼──────────────────────────────┼───────────────────────────────────────────────────────────────────┼─────────────────┼───────────┤
+│ 0       │ '_ClientToClientSequence'    │ '_ClientToClientSequence_AB_pkey'                                 │ 'A'             │ true      │
+│ 1       │ '_ClientToClientSequence'    │ '_ClientToClientSequence_AB_pkey'                                 │ 'B'             │ true      │
+│ 2       │ '_ClientToClientSequence'    │ '_ClientToClientSequence_B_index'                                 │ 'B'             │ false     │
+│ 3       │ '_prisma_migrations'         │ '_prisma_migrations_pkey'                                         │ 'id'            │ true      │
+│ 4       │ '_schema_info'               │ '_schema_info_key_unique'                                         │ 'key'           │ true      │
+│ 5       │ '_schema_info'               │ '_schema_info_pkey'                                               │ 'id'            │ true      │
+│ 6       │ 'access_requests'            │ 'access_requests_pkey'                                            │ 'id'            │ true      │
+│ 7       │ 'access_requests'            │ 'idx_ar_page'                                                     │ 'page_code'     │ false     │
+│ 8       │ 'access_requests'            │ 'idx_ar_status'                                                   │ 'status'        │ false     │
+│ 9       │ 'access_requests'            │ 'idx_ar_tenant'                                                   │ 'tenant_id'     │ false     │
+│ 10      │ 'access_requests'            │ 'idx_ar_user'                                                     │ 'user_id'       │ false     │
+│ 11      │ 'admin_access_notifications' │ 'admin_access_notifications_pkey'                                 │ 'id'            │ true      │
+│ 12      │ 'admin_access_notifications' │ 'idx_aan_admin'                                                   │ 'admin_user_id' │ false     │
+│ 13      │ 'admin_access_notifications' │ 'idx_aan_unread'                                                  │ 'is_read'       │ false     │
+│ 14      │ 'admin_access_notifications' │ 'idx_aan_unread'                                                  │ 'admin_user_id' │ false     │
+│ 15      │ 'admin_page_assignments'     │ 'admin_page_assignments_assigner_id_assigner_type_assignee_i_key' │ 'assigner_type' │ true      │
+│ 16      │ 'admin_page_assignments'     │ 'admin_page_assignments_assigner_id_assigner_type_assignee_i_key' │ 'page_key'      │ true      │
+│ 17      │ 'admin_page_assignments'     │ 'admin_page_assignments_assigner_id_assigner_type_assignee_i_key' │ 'assigner_id'   │ true      │
+│ 18      │ 'admin_page_assignments'     │ 'admin_page_assignments_assigner_id_assigner_type_assignee_i_key' │ 'assignee_id'   │ true      │
+│ 19      │ 'admin_page_assignments'     │ 'admin_page_assignments_pkey'                                     │ 'id'            │ true      │
+│ 20      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_active'                               │ 'is_active'     │ false     │
+│ 21      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_assignee'                             │ 'assignee_id'   │ false     │
+│ 22      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_assignee'                             │ 'assignee_type' │ false     │
+│ 23      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_assigner'                             │ 'assigner_id'   │ false     │
+│ 24      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_assigner'                             │ 'assigner_type' │ false     │
+│ 25      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_page'                                 │ 'page_key'      │ false     │
+│ 26      │ 'admin_page_assignments'     │ 'idx_admin_page_assignments_tenant'                               │ 'tenant_id'     │ false     │
+│ 27      │ 'admin_role_assignments'     │ 'admin_role_assignments_pkey'                                     │ 'id'            │ true      │
+│ 28      │ 'admin_role_assignments'     │ 'idx_admin_role_assign_active'                                    │ 'is_active'     │ false     │
+│ 29      │ 'admin_role_assignments'     │ 'idx_admin_role_assign_assignee'                                  │ 'assignee_id'   │ false     │
+│ 30      │ 'admin_role_assignments'     │ 'idx_admin_role_assign_assigner'                                  │ 'assigner_type' │ false     │
+│ 31      │ 'admin_role_assignments'     │ 'idx_admin_role_assign_assigner'                                  │ 'assigner_id'   │ false     │
+│ 32      │ 'admin_role_assignments'     │ 'idx_admin_role_assign_role'                                      │ 'role_id'       │ false     │
+│ 33      │ 'admin_role_grants'          │ 'admin_role_grants_assigner_id_assigner_type_assignee_id_rol_key' │ 'assigner_type' │ true      │
+│ 34      │ 'admin_role_grants'          │ 'admin_role_grants_assigner_id_assigner_type_assignee_id_rol_key' │ 'assignee_id'   │ true      │
+│ 35      │ 'admin_role_grants'          │ 'admin_role_grants_assigner_id_assigner_type_assignee_id_rol_key' │ 'assigner_id'   │ true      │
+│ 36      │ 'admin_role_grants'          │ 'admin_role_grants_assigner_id_assigner_type_assignee_id_rol_key' │ 'role_name'     │ true      │
+│ 37      │ 'admin_role_grants'          │ 'admin_role_grants_pkey'                                          │ 'id'            │ true      │
+│ 38      │ 'admin_role_grants'          │ 'idx_admin_role_grants_active'                                    │ 'is_active'     │ false     │
+│ 39      │ 'admin_role_grants'          │ 'idx_admin_role_grants_assignee'                                  │ 'assignee_type' │ false     │
+└─────────┴──────────────────────────────┴───────────────────────────────────────────────────────────────────┴─────────────────┴───────────┘
+Total indexes: 1787
+
+--- TRIGGERS ---
+┌─────────┬─────────────────────────────────────┬─────────────────────────────────────────────────┬──────────┬────────────────────────────────────────────────────────────┐
+│ (index) │ table_name                          │ trigger_name                                    │ event    │ action_statement                                           │
+├─────────┼─────────────────────────────────────┼─────────────────────────────────────────────────┼──────────┼────────────────────────────────────────────────────────────┤
+│ 0       │ 'admin_page_assignments'            │ 'trg_admin_page_assignments_updated'            │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_access_timestamp()'  │
+│ 1       │ 'admin_page_assignments'            │ 'trg_invalidate_cache_on_page_change'           │ 'INSERT' │ 'EXECUTE FUNCTION invalidate_effective_access_cache()'     │
+│ 2       │ 'admin_page_assignments'            │ 'trg_invalidate_cache_on_page_change'           │ 'DELETE' │ 'EXECUTE FUNCTION invalidate_effective_access_cache()'     │
+│ 3       │ 'admin_page_assignments'            │ 'trg_invalidate_cache_on_page_change'           │ 'UPDATE' │ 'EXECUTE FUNCTION invalidate_effective_access_cache()'     │
+│ 4       │ 'admin_role_assignments'            │ 'audit_admin_role_assignments'                  │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 5       │ 'admin_role_assignments'            │ 'audit_admin_role_assignments'                  │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 6       │ 'admin_role_assignments'            │ 'audit_admin_role_assignments'                  │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 7       │ 'admin_role_grants'                 │ 'trg_admin_role_grants_updated'                 │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_access_timestamp()'  │
+│ 8       │ 'approval_audit_log'                │ 'trg_enforce_override_comment'                  │ 'INSERT' │ 'EXECUTE FUNCTION enforce_override_comment()'              │
+│ 9       │ 'approvals'                         │ 'audit_approvals'                               │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 10      │ 'approvals'                         │ 'audit_approvals'                               │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 11      │ 'approvals'                         │ 'audit_approvals'                               │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 12      │ 'billing_profiles'                  │ 'update_billing_profiles_updated_at'            │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 13      │ 'branches'                          │ 'audit_branches'                                │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 14      │ 'branches'                          │ 'audit_branches'                                │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 15      │ 'branches'                          │ 'audit_branches'                                │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 16      │ 'chat_feedback'                     │ 'trigger_update_success_rate'                   │ 'INSERT' │ 'EXECUTE FUNCTION update_training_success_rate()'          │
+│ 17      │ 'client_module_permissions'         │ 'audit_client_module_permissions'               │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 18      │ 'client_module_permissions'         │ 'audit_client_module_permissions'               │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 19      │ 'client_module_permissions'         │ 'audit_client_module_permissions'               │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 20      │ 'client_subscriptions'              │ 'trigger_subscription_audit'                    │ 'UPDATE' │ 'EXECUTE FUNCTION audit_subscription_state_change()'       │
+│ 21      │ 'client_subscriptions'              │ 'trigger_subscription_updated'                  │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_timestamp()'         │
+│ 22      │ 'clients'                           │ 'audit_clients'                                 │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 23      │ 'clients'                           │ 'audit_clients'                                 │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 24      │ 'clients'                           │ 'audit_clients'                                 │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 25      │ 'custom_tenant_feature_controls'    │ 'trigger_update_custom_feature_timestamp'       │ 'UPDATE' │ 'EXECUTE FUNCTION update_custom_config_timestamp()'        │
+│ 26      │ 'custom_tenant_plan_configurations' │ 'trigger_update_custom_config_timestamp'        │ 'UPDATE' │ 'EXECUTE FUNCTION update_custom_config_timestamp()'        │
+│ 27      │ 'customers'                         │ 'trg_customers_updated_at'                      │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 28      │ 'enterprise_admins'                 │ 'audit_enterprise_admins'                       │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 29      │ 'enterprise_admins'                 │ 'audit_enterprise_admins'                       │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 30      │ 'enterprise_admins'                 │ 'audit_enterprise_admins'                       │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 31      │ 'entity_id_sequences'               │ 'trg_entity_sequences_updated_at'               │ 'UPDATE' │ 'EXECUTE FUNCTION update_entity_sequences_updated_at()'    │
+│ 32      │ 'expenses'                          │ 'audit_expenses'                                │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 33      │ 'expenses'                          │ 'audit_expenses'                                │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 34      │ 'expenses'                          │ 'audit_expenses'                                │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 35      │ 'feature_catalog'                   │ 'trigger_feature_catalog_updated'               │ 'UPDATE' │ 'EXECUTE FUNCTION update_micro_unlock_timestamp()'         │
+│ 36      │ 'invoices'                          │ 'update_invoices_updated_at'                    │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 37      │ 'items'                             │ 'trg_items_updated_at'                          │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 38      │ 'master_subscription_plans'         │ 'trigger_master_plans_updated'                  │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_timestamp()'         │
+│ 39      │ 'module_assignments'                │ 'audit_module_assignments'                      │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 40      │ 'module_assignments'                │ 'audit_module_assignments'                      │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 41      │ 'module_assignments'                │ 'audit_module_assignments'                      │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 42      │ 'modules_master'                    │ 'modules_master_updated_at'                     │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 43      │ 'pages_master'                      │ 'pages_master_updated_at'                       │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 44      │ 'payment_requests'                  │ 'audit_payment_requests'                        │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 45      │ 'payment_requests'                  │ 'audit_payment_requests'                        │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 46      │ 'payment_requests'                  │ 'audit_payment_requests'                        │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 47      │ 'payment_requests'                  │ 'trg_calc_remaining'                            │ 'UPDATE' │ 'EXECUTE FUNCTION calculate_remaining_amount()'            │
+│ 48      │ 'payment_requests'                  │ 'trg_calc_remaining'                            │ 'INSERT' │ 'EXECUTE FUNCTION calculate_remaining_amount()'            │
+│ 49      │ 'payment_requests'                  │ 'trg_payment_requests_version'                  │ 'UPDATE' │ 'EXECUTE FUNCTION increment_version()'                     │
+│ 50      │ 'payments'                          │ 'update_payments_updated_at'                    │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 51      │ 'plan_feature_controls'             │ 'trigger_plan_features_updated'                 │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_timestamp()'         │
+│ 52      │ 'plan_feature_controls_draft'       │ 'trigger_draft_feature_updated'                 │ 'UPDATE' │ 'EXECUTE FUNCTION update_draft_timestamp()'                │
+│ 53      │ 'plan_module_access'                │ 'trg_audit_plan_module_access'                  │ 'DELETE' │ 'EXECUTE FUNCTION audit_plan_module_access_changes()'      │
+│ 54      │ 'plan_module_access'                │ 'trg_audit_plan_module_access'                  │ 'UPDATE' │ 'EXECUTE FUNCTION audit_plan_module_access_changes()'      │
+│ 55      │ 'plan_module_access'                │ 'trg_audit_plan_module_access'                  │ 'INSERT' │ 'EXECUTE FUNCTION audit_plan_module_access_changes()'      │
+│ 56      │ 'plan_module_access_draft'          │ 'trigger_draft_module_updated'                  │ 'UPDATE' │ 'EXECUTE FUNCTION update_draft_timestamp()'                │
+│ 57      │ 'qa_issue_comments'                 │ 'qa_issue_comments_updated_at'                  │ 'UPDATE' │ 'EXECUTE FUNCTION trigger_qa_updated_at()'                 │
+│ 58      │ 'qa_issues'                         │ 'qa_issues_updated_at'                          │ 'UPDATE' │ 'EXECUTE FUNCTION trigger_qa_updated_at()'                 │
+│ 59      │ 'qa_issues'                         │ 'set_issue_code_trigger'                        │ 'INSERT' │ 'EXECUTE FUNCTION trigger_set_issue_code()'                │
+│ 60      │ 'qa_test_tasks'                     │ 'qa_test_tasks_updated_at'                      │ 'UPDATE' │ 'EXECUTE FUNCTION trigger_qa_updated_at()'                 │
+│ 61      │ 'rbac_permissions'                  │ 'audit_rbac_permissions'                        │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 62      │ 'rbac_permissions'                  │ 'audit_rbac_permissions'                        │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 63      │ 'rbac_permissions'                  │ 'audit_rbac_permissions'                        │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 64      │ 'rbac_roles'                        │ 'audit_rbac_roles'                              │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 65      │ 'rbac_roles'                        │ 'audit_rbac_roles'                              │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 66      │ 'rbac_roles'                        │ 'audit_rbac_roles'                              │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 67      │ 'reconciliation_batches'            │ 'trigger_prevent_finalized_batch_modification'  │ 'UPDATE' │ 'EXECUTE FUNCTION prevent_finalized_batch_modification()'  │
+│ 68      │ 'reconciliation_exceptions'         │ 'trigger_update_batch_stats_on_exception'       │ 'INSERT' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 69      │ 'reconciliation_exceptions'         │ 'trigger_update_batch_stats_on_exception'       │ 'DELETE' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 70      │ 'reconciliation_exceptions'         │ 'trigger_update_batch_stats_on_exception'       │ 'UPDATE' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 71      │ 'reconciliation_matches'            │ 'trigger_update_batch_stats_on_match'           │ 'DELETE' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 72      │ 'reconciliation_matches'            │ 'trigger_update_batch_stats_on_match'           │ 'INSERT' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 73      │ 'reconciliation_matches'            │ 'trigger_update_batch_stats_on_match'           │ 'UPDATE' │ 'EXECUTE FUNCTION update_batch_statistics()'               │
+│ 74      │ 'settlement_line_items'             │ 'trg_settlement_line_items_version'             │ 'UPDATE' │ 'EXECUTE FUNCTION increment_version()'                     │
+│ 75      │ 'settlements'                       │ 'trg_settlement_audit_job'                      │ 'UPDATE' │ 'EXECUTE FUNCTION enqueue_audit_job()'                     │
+│ 76      │ 'settlements'                       │ 'trg_settlement_paid'                           │ 'UPDATE' │ 'EXECUTE FUNCTION update_requests_on_settlement_paid()'    │
+│ 77      │ 'settlements'                       │ 'trg_settlements_version'                       │ 'UPDATE' │ 'EXECUTE FUNCTION increment_version()'                     │
+│ 78      │ 'super_admins'                      │ 'audit_super_admins'                            │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 79      │ 'super_admins'                      │ 'audit_super_admins'                            │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 80      │ 'super_admins'                      │ 'audit_super_admins'                            │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 81      │ 'support_sessions'                  │ 'trg_auto_expire_support_sessions'              │ 'UPDATE' │ 'EXECUTE FUNCTION auto_expire_support_sessions()'          │
+│ 82      │ 'task_clarifications'               │ 'update_task_clarifications_updated_at_trigger' │ 'UPDATE' │ 'EXECUTE FUNCTION update_task_clarifications_updated_at()' │
+│ 83      │ 'task_requests'                     │ 'trg_task_request_log_changes'                  │ 'UPDATE' │ 'EXECUTE FUNCTION log_task_request_status_changes()'       │
+│ 84      │ 'task_requests'                     │ 'trg_task_requests_updated_at'                  │ 'UPDATE' │ 'EXECUTE FUNCTION update_task_request_updated_at()'        │
+│ 85      │ 'tenant_feature_unlocks'            │ 'trigger_audit_feature_unlock'                  │ 'UPDATE' │ 'EXECUTE FUNCTION audit_feature_unlock_change()'           │
+│ 86      │ 'tenant_feature_unlocks'            │ 'trigger_audit_feature_unlock'                  │ 'INSERT' │ 'EXECUTE FUNCTION audit_feature_unlock_change()'           │
+│ 87      │ 'tenant_feature_unlocks'            │ 'trigger_tenant_unlocks_updated'                │ 'UPDATE' │ 'EXECUTE FUNCTION update_micro_unlock_timestamp()'         │
+│ 88      │ 'tenant_module_overrides'           │ 'trigger_tenant_override_updated'               │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_timestamp()'         │
+│ 89      │ 'tenant_plan_assignments'           │ 'trigger_tenant_plans_updated'                  │ 'UPDATE' │ 'EXECUTE FUNCTION update_subscription_timestamp()'         │
+│ 90      │ 'tenant_quota_overrides'            │ 'update_tenant_quota_overrides_updated_at'      │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 91      │ 'tenant_usage'                      │ 'update_tenant_usage_updated_at'                │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 92      │ 'usage_counters'                    │ 'trigger_usage_counters_updated'                │ 'UPDATE' │ 'EXECUTE FUNCTION update_micro_unlock_timestamp()'         │
+│ 93      │ 'usage_records'                     │ 'update_usage_records_updated_at'               │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 94      │ 'user_bank_accounts'                │ 'audit_user_bank_accounts'                      │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 95      │ 'user_bank_accounts'                │ 'audit_user_bank_accounts'                      │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 96      │ 'user_bank_accounts'                │ 'audit_user_bank_accounts'                      │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 97      │ 'user_kyc'                          │ 'audit_user_kyc'                                │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 98      │ 'user_kyc'                          │ 'audit_user_kyc'                                │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 99      │ 'user_kyc'                          │ 'audit_user_kyc'                                │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 100     │ 'user_sessions'                     │ 'audit_user_sessions'                           │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 101     │ 'user_sessions'                     │ 'audit_user_sessions'                           │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 102     │ 'user_sessions'                     │ 'audit_user_sessions'                           │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 103     │ 'users_enhanced'                    │ 'audit_users_enhanced'                          │ 'INSERT' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 104     │ 'users_enhanced'                    │ 'audit_users_enhanced'                          │ 'DELETE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 105     │ 'users_enhanced'                    │ 'audit_users_enhanced'                          │ 'UPDATE' │ 'EXECUTE FUNCTION enhanced_audit_trigger_func()'           │
+│ 106     │ 'vendors'                           │ 'trg_vendors_updated_at'                        │ 'UPDATE' │ 'EXECUTE FUNCTION update_updated_at_column()'              │
+│ 107     │ 'workflow_tasks'                    │ 'task_status_change_trigger'                    │ 'UPDATE' │ 'EXECUTE FUNCTION log_task_status_change()'                │
+│ 108     │ 'workflow_tasks'                    │ 'trg_task_status_change'                        │ 'UPDATE' │ 'EXECUTE FUNCTION log_task_status_change()'                │
+│ 109     │ 'workflow_tasks'                    │ 'trg_workflow_tasks_updated_at'                 │ 'UPDATE' │ 'EXECUTE FUNCTION update_workflow_tasks_timestamp()'       │
+│ 110     │ 'workflows'                         │ 'trigger_update_workflow'                       │ 'UPDATE' │ 'EXECUTE FUNCTION update_workflow_timestamp()'             │
+└─────────┴─────────────────────────────────────┴─────────────────────────────────────────────────┴──────────┴────────────────────────────────────────────────────────────┘
+
+--- FOREIGN KEYS ---
+┌─────────┬──────────────────────────────┬────────────────────────┬───────────────────────────────┬────────────────┐
+│ (index) │ table_name                   │ column_name            │ foreign_table                 │ foreign_column │
+├─────────┼──────────────────────────────┼────────────────────────┼───────────────────────────────┼────────────────┤
+│ 0       │ '_ClientToClientSequence'    │ 'A'                    │ 'clients'                     │ 'id'           │
+│ 1       │ '_ClientToClientSequence'    │ 'B'                    │ 'client_sequences'            │ 'id'           │
+│ 2       │ 'access_requests'            │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 3       │ 'access_requests'            │ 'user_id'              │ 'users_enhanced'              │ 'id'           │
+│ 4       │ 'admin_access_notifications' │ 'access_request_id'    │ 'access_requests'             │ 'id'           │
+│ 5       │ 'admin_page_assignments'     │ 'page_id'              │ 'pages_master'                │ 'id'           │
+│ 6       │ 'admin_role_assignments'     │ 'role_id'              │ 'rbac_roles'                  │ 'id'           │
+│ 7       │ 'admin_role_grants'          │ 'role_id'              │ 'rbac_roles'                  │ 'id'           │
+│ 8       │ 'approval_audit_log'         │ 'approval_instance_id' │ 'approval_instances'          │ 'id'           │
+│ 9       │ 'approval_instances'         │ 'current_stage_id'     │ 'approval_workflow_stages'    │ 'id'           │
+│ 10      │ 'approval_instances'         │ 'workflow_template_id' │ 'approval_workflow_templates' │ 'id'           │
+│ 11      │ 'approval_stage_instances'   │ 'approval_instance_id' │ 'approval_instances'          │ 'id'           │
+│ 12      │ 'approval_stage_instances'   │ 'workflow_stage_id'    │ 'approval_workflow_stages'    │ 'id'           │
+│ 13      │ 'approval_workflow_stages'   │ 'workflow_template_id' │ 'approval_workflow_templates' │ 'id'           │
+│ 14      │ 'asset_assignments'          │ 'asset_id'             │ 'assets'                      │ 'id'           │
+│ 15      │ 'asset_assignments'          │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 16      │ 'asset_categories'           │ 'parent_id'            │ 'asset_categories'            │ 'id'           │
+│ 17      │ 'asset_categories'           │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 18      │ 'asset_history'              │ 'asset_id'             │ 'assets'                      │ 'id'           │
+│ 19      │ 'asset_history'              │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 20      │ 'assets'                     │ 'category_id'          │ 'asset_categories'            │ 'id'           │
+│ 21      │ 'assets'                     │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 22      │ 'audit_logs'                 │ 'session_id'           │ 'user_sessions'               │ 'id'           │
+│ 23      │ 'authority_overrides'        │ 'granted_by'           │ 'users_enhanced'              │ 'id'           │
+│ 24      │ 'authority_overrides'        │ 'revoked_by'           │ 'users_enhanced'              │ 'id'           │
+│ 25      │ 'authority_overrides'        │ 'user_id'              │ 'users_enhanced'              │ 'id'           │
+│ 26      │ 'bank_statement_lines'       │ 'statement_id'         │ 'bank_statements'             │ 'id'           │
+│ 27      │ 'bank_statements'            │ 'template_id'          │ 'bank_templates'              │ 'id'           │
+│ 28      │ 'base_user_pages'            │ 'page_id'              │ 'pages_master'                │ 'id'           │
+│ 29      │ 'billing_invoice_items'      │ 'feature_key'          │ 'feature_catalog'             │ 'feature_key'  │
+│ 30      │ 'billing_invoice_items'      │ 'invoice_id'           │ 'micro_unlock_invoices'       │ 'id'           │
+│ 31      │ 'billing_overrides'          │ 'client_id'            │ 'clients'                     │ 'id'           │
+│ 32      │ 'billing_profiles'           │ 'client_id'            │ 'clients'                     │ 'id'           │
+│ 33      │ 'branches'                   │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 34      │ 'branches'                   │ 'tenant_id'            │ 'clients'                     │ 'id'           │
+│ 35      │ 'chat_conversations'         │ 'user_id'              │ 'users_enhanced'              │ 'id'           │
+│ 36      │ 'chat_feedback'              │ 'training_data_id'     │ 'chat_training_data'          │ 'id'           │
+│ 37      │ 'chat_messages'              │ 'conversation_id'      │ 'chat_conversations'          │ 'id'           │
+│ 38      │ 'chat_messages'              │ 'conversation_id'      │ 'chat_conversations'          │ 'id'           │
+│ 39      │ 'chat_messages'              │ 'user_id'              │ 'users_enhanced'              │ 'id'           │
+└─────────┴──────────────────────────────┴────────────────────────┴───────────────────────────────┴────────────────┘
+Total FKs: 216
+
+--- LEGACY COLUMNS (*_old) ---
+┌─────────┬──────────────────────────────────┬──────────────────────────┬───────────┐
+│ (index) │ table_name                       │ column_name              │ data_type │
+├─────────┼──────────────────────────────────┼──────────────────────────┼───────────┤
+│ 0       │ 'custom_tenant_feature_controls' │ 'approval_threshold'     │ 'numeric' │
+│ 1       │ 'master_subscription_plans'      │ 'cfo_approval_threshold' │ 'numeric' │
+│ 2       │ 'plan_feature_controls'          │ 'approval_threshold'     │ 'numeric' │
+│ 3       │ 'plan_feature_controls_draft'    │ 'approval_threshold'     │ 'numeric' │
+└─────────┴──────────────────────────────────┴──────────────────────────┴───────────┘
+
+--- ORPHAN ROWS (users_enhanced without RBAC) ---
+┌─────────┬────────────────────────────────────────┬─────────┐
+│ (index) │ id                                     │ role_id │
+├─────────┼────────────────────────────────────────┼─────────┤
+│ 0       │ '3c5458a7-57b0-4931-a66f-f89fb5e43d00' │ null    │
+│ 1       │ 'cd003afb-142e-4d16-886b-f1136dc7cd5c' │ null    │
+└─────────┴────────────────────────────────────────┴─────────┘
+
+--- UNUSED COLUMNS (sample) ---
+┌─────────┬───────────────────────────┬───────────────────────┐
+│ (index) │ table_name                │ column_name           │
+├─────────┼───────────────────────────┼───────────────────────┤
+│ 0       │ '_ClientToClientSequence' │ 'A'                   │
+│ 1       │ '_ClientToClientSequence' │ 'B'                   │
+│ 2       │ '_prisma_migrations'      │ 'checksum'            │
+│ 3       │ '_prisma_migrations'      │ 'finished_at'         │
+│ 4       │ '_prisma_migrations'      │ 'migration_name'      │
+│ 5       │ '_prisma_migrations'      │ 'logs'                │
+│ 6       │ '_prisma_migrations'      │ 'rolled_back_at'      │
+│ 7       │ '_prisma_migrations'      │ 'started_at'          │
+│ 8       │ '_prisma_migrations'      │ 'applied_steps_count' │
+│ 9       │ 'subscription_audit_log'  │ 'client_id'           │
+└─────────┴───────────────────────────┴───────────────────────┘
+
+=== FORENSIC DB AUDIT COMPLETE ===

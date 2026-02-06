@@ -1,0 +1,2985 @@
+{
+  "timestamp": "2026-02-06T14:11:25.427Z",
+  "totalIssues": 490,
+  "findings": {
+    "parseInt": [
+      {
+        "file": "my-backend/__mocks__/uuid.js",
+        "line": 28,
+        "code": "return parseInt(uuid.charAt(14), 16);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2706,
+        "code": "const whereClause = { id: parseInt(id) };",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2753,
+        "code": "where: { id: parseInt(id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2765,
+        "code": "where: { id: parseInt(id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2796,
+        "code": "userId: parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2894,
+        "code": "const superAdminId = parseInt(id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2968,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 2969,
+        "code": "const moduleIdInt = parseInt(moduleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3109,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3110,
+        "code": "const moduleIdInt = parseInt(moduleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3175,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3245,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3285,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3380,
+        "code": "const superAdminId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3416,
+        "code": "const pid = parseInt(pageId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3465,
+        "code": "const roleIdNum = parseInt(roleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 3711,
+        "code": "const roleIdNum = parseInt(roleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 5359,
+        "code": "id: parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 5373,
+        "code": "where: { id: parseInt(id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 5436,
+        "code": "const branchId = parseInt(id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/cache/services/permissionInvalidator.js",
+        "line": 101,
+        "code": "SELECT DISTINCT user_id FROM rbac_user_roles WHERE role_id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/cache/services/permissionInvalidator.js",
+        "line": 109,
+        "code": "SELECT name FROM rbac_roles WHERE id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 332,
+        "code": "WHERE t.id = ${parseInt(id)} AND (t.tenant_id = ${tenantId} OR t.tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 343,
+        "code": "WHERE task_id = ${parseInt(id)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 408,
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 434,
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 487,
+        "code": "if (task_id) whereClause += ` AND i.task_id = ${parseInt(task_id)}`;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 639,
+        "code": "WHERE i.id = ${parseInt(id)} AND (i.tenant_id = ${tenantId} OR i.tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 651,
+        "code": "WHERE h.issue_id = ${parseInt(id)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 676,
+        "code": "WHERE h.issue_id = ${parseInt(id)} AND (i.tenant_id = ${tenantId} OR i.tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 711,
+        "code": "(${task_id ? parseInt(task_id) : null}, ${title}, ${description || null}, ${module || null},",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 744,
+        "code": "SELECT * FROM qa_issues WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 776,
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 782,
+        "code": "await logIssueChange(prisma, parseInt(id), userId, change.field, change.oldValue, change.newValue, n",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 787,
+        "code": "await logIssueChange(prisma, parseInt(id), userId, 'comment', null, null, note, git_commit || null, ",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 814,
+        "code": "SELECT id FROM qa_issues WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NUL",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 821,
+        "code": "await logIssueChange(prisma, parseInt(id), userId, 'comment', null, null, note, git_commit || null, ",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 841,
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/rbacController.js",
+        "line": 35,
+        "code": "await rbacService.deleteRole(parseInt(id))",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/rbacController.js",
+        "line": 107,
+        "code": "const permissions = await rbacService.getPermissionsByRole(parseInt(roleId))",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/rbacController.js",
+        "line": 127,
+        "code": "parseInt(roleId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/rbacController.js",
+        "line": 128,
+        "code": "parseInt(routeId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/rbacController.js",
+        "line": 129,
+        "code": "parseInt(actionId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 108,
+        "code": "const result = await superAdminService.updateRole(parseInt(roleId), roleData, adminUserId, adminUser",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 122,
+        "code": "const result = await superAdminService.deleteRole(parseInt(roleId), adminUserId, adminUsername)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 152,
+        "code": "const result = await superAdminService.updateRoute(parseInt(routeId), routeData, adminUserId, adminU",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 166,
+        "code": "const result = await superAdminService.deleteRoute(parseInt(routeId), adminUserId, adminUsername)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 160,
+        "code": "const parsedInt = parseInt(rawId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 235,
+        "code": "const parsedInt = parseInt(rawId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 672,
+        "code": "const numericId = parseInt(taskId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 824,
+        "code": "const numericId = parseInt(taskId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 43,
+        "code": "if (!isNaN(parseInt(rawId)) && String(parseInt(rawId)) === String(rawId)) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 43,
+        "code": "if (!isNaN(parseInt(rawId)) && String(parseInt(rawId)) === String(rawId)) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 44,
+        "code": "return parseInt(rawId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 1681,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/examples/read-replica-usage.js",
+        "line": 208,
+        "code": "where: { id: parseInt(req.params.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/jobs/aggregateDailyUsageJobSecured.js",
+        "line": 147,
+        "code": "const activeUserCount = parseInt(activeUsers.rows[0]?.count || 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/auth.js",
+        "line": 144,
+        "code": "const parsedId = parseInt(subjectId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/messages.js",
+        "line": 305,
+        "code": "const conversationId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/thread-messages.js",
+        "line": 30,
+        "code": "const legacyId = parseInt(req.user.legacy_id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/thread-messages.js",
+        "line": 39,
+        "code": "const parsed = parseInt(req.user.id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/thread-messages.js",
+        "line": 442,
+        "code": "where: { threadId, userId: parseInt(memberId) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/accessRequests.js",
+        "line": 199,
+        "code": "requestId: parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/accessRequests.js",
+        "line": 247,
+        "code": "await subscriptionPageAccessService.markNotificationRead(parseInt(id), actionTaken);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/admin/auditRoutes.js",
+        "line": 474,
+        "code": "user_count: parseInt(row.user_count, 10),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 38,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 306,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 312,
+        "code": "id: parseInt(sessionId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 323,
+        "code": "where: { id: parseInt(sessionId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/aiAnalyticsRoute.js",
+        "line": 195,
+        "code": "const params = userRole !== 'enterprise-admin' && tenantId ? [parseInt(id), tenantId] : [parseInt(id",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/aiAnalyticsRoute.js",
+        "line": 195,
+        "code": "const params = userRole !== 'enterprise-admin' && tenantId ? [parseInt(id), tenantId] : [parseInt(id",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/aiAnalyticsRoute.js",
+        "line": 242,
+        "code": "`, parseInt(id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/aiRoute.js",
+        "line": 278,
+        "code": "`, parseInt(id), userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalDashboardRoutes.js",
+        "line": 514,
+        "code": "bottleneckUsers: parseInt(bottleneckData[0]?.bottleneck_users || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalDashboardRoutes.js",
+        "line": 518,
+        "code": "usersWithRejections: parseInt(rejectionData[0]?.users_with_rejections || 0)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalDashboardRoutes.js",
+        "line": 522,
+        "code": "bottlenecks: parseInt(bottleneckData[0]?.bottleneck_users || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 107,
+        "code": "const moduleId = parseInt(req.params.moduleId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 170,
+        "code": "const moduleId = parseInt(req.params.moduleId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 224,
+        "code": "parseInt(moduleId, 10),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 225,
+        "code": "requesterId ? parseInt(requesterId, 10) : null",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 333,
+        "code": "parseInt(moduleId, 10),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 335,
+        "code": "{ excludeUserId: excludeUserId ? parseInt(excludeUserId, 10) : null }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 60,
+        "code": "params.push(parseInt(user_id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 128,
+        "code": "SELECT * FROM audit_logs WHERE id = ${parseInt(id)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 303,
+        "code": "params.push(parseInt(user_id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/chat/training.js",
+        "line": 148,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/chat/training.js",
+        "line": 379,
+        "code": "params.push(parseInt(id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 29,
+        "code": "id: typeof user.id === 'string' ? parseInt(user.id) : user.id,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 40,
+        "code": "const parsedInt = parseInt(rawId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 117,
+        "code": "taskId: parseInt(taskId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 119,
+        "code": "responderId: responderId ? parseInt(responderId) : null,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 208,
+        "code": "parseInt(taskId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 40,
+        "code": "const superAdminId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 44,
+        "code": "const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.supe",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 51,
+        "code": "const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.supe",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 123,
+        "code": "const parsedSid = typeof sid === 'string' ? parseInt(sid, 10) : sid;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 741,
+        "code": "const roleIdsArray = Array.isArray(roleIds) ? roleIds.map(id => parseInt(id, 10)).filter(id => !isNa",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/dbMenuRoutes.js",
+        "line": 88,
+        "code": "if (superAdminId && !isNaN(parseInt(superAdminId))) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/dbMenuRoutes.js",
+        "line": 109,
+        "code": "(spp.superadmin_id = ${parseInt(superAdminId)} AND spp.is_active = true)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/decisionLoadRoutes.js",
+        "line": 219,
+        "code": "const usersCount = parseInt(role.users_count) || 0;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/decisionLoadRoutes.js",
+        "line": 581,
+        "code": "userCountMap[u.role_code] = parseInt(u.users_count) || 0;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/decisionLoadRoutes.js",
+        "line": 999,
+        "code": "const usersCount = parseInt(role.users_count) || 0;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Dashboard.js",
+        "line": 235,
+        "code": "users: parseInt(t.users)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 297,
+        "code": "const keyId = parseInt(req.params.keyId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 419,
+        "code": "const webhookId = parseInt(req.params.webhookId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 454,
+        "code": "const webhookId = parseInt(req.params.webhookId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 482,
+        "code": "const webhookId = parseInt(req.params.webhookId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Modules.js",
+        "line": 63,
+        "code": "where: { id: parseInt(req.params.id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Modules.js",
+        "line": 71,
+        "code": "where: { id: parseInt(req.params.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Notifications.js",
+        "line": 93,
+        "code": "const ruleId = parseInt(req.params.ruleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Reports.js",
+        "line": 101,
+        "code": "userCount: parseInt(a.user_count),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 91,
+        "code": "const adminId = parseInt(req.params.adminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 163,
+        "code": "const adminId = parseInt(req.params.adminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 282,
+        "code": "created_by: parseInt(enterpriseAdminId)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 308,
+        "code": "const adminId = parseInt(req.params.adminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 355,
+        "code": "const adminId = parseInt(req.params.adminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 386,
+        "code": "const adminId = parseInt(req.params.adminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-SuperAdmins.js",
+        "line": 538,
+        "code": "const adminId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 48,
+        "code": "where.client_id = parseInt(orgId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 126,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 216,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 297,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 357,
+        "code": "id: { in: userIds.map(id => parseInt(id)) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 517,
+        "code": "const userId = parseInt(req.params.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise.js",
+        "line": 199,
+        "code": "where: { id: parseInt(req.params.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise.js",
+        "line": 349,
+        "code": "where: { id: parseInt(req.params.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise.js",
+        "line": 390,
+        "code": "where: { id: parseInt(req.params.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise.js",
+        "line": 426,
+        "code": "const superAdminId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/enterprise.js",
+        "line": 554,
+        "code": "if (superAdminId) where.super_admin_id = parseInt(superAdminId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/fallbackLogsRoutes.js",
+        "line": 292,
+        "code": "WHERE id = ${parseInt(id)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/fallbackLogsRoutes.js",
+        "line": 325,
+        "code": "const idList = ids.map(id => parseInt(id)).filter(id => !isNaN(id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/fallbackLogsRoutes.js",
+        "line": 449,
+        "code": "WHERE id = ${parseInt(id)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 343,
+        "code": "const user = await prisma.users_enhanced.findUnique({ where: { id: parseInt(userId) } });",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 358,
+        "code": "where: { id: parseInt(userId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 369,
+        "code": "recordId: parseInt(userId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 550,
+        "code": "SELECT * FROM support_sessions WHERE id = ${parseInt(sessionId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 565,
+        "code": "WHERE id = ${parseInt(sessionId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 569,
+        "code": "sessionId: parseInt(sessionId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 575,
+        "code": "supportSessionId: parseInt(sessionId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 886,
+        "code": "if (userId) where.user_id = parseInt(userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/microUnlockRoutes.js",
+        "line": 979,
+        "code": "totalBlocked: summary.reduce((sum, s) => sum + parseInt(s.users_blocked || 0, 10), 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/permissions.js",
+        "line": 159,
+        "code": "const userId = parseInt(req.query.userId) || req.user.id;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/permissionsRoutes.js",
+        "line": 196,
+        "code": "let userIdInt = parseInt(userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/permissionsRoutes.js",
+        "line": 341,
+        "code": "const userIdInt = parseInt(userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 103,
+        "code": "assignee_id: parseInt(superAdminUserId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 180,
+        "code": "let userIdInt = parseInt(userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 542,
+        "code": "const roleIdInt = parseInt(roleId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 1035,
+        "code": "const userId = parseInt(req.query.userId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 1036,
+        "code": "const roleId = parseInt(req.query.roleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/reportsRoutes.js",
+        "line": 80,
+        "code": "assignee_id: parseInt(superAdminUserId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/reviewRoutes.js",
+        "line": 42,
+        "code": "taskId: parseInt(taskId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/reviewRoutes.js",
+        "line": 44,
+        "code": "reviewerId: reviewerId ? parseInt(reviewerId) : null,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/reviewRoutes.js",
+        "line": 263,
+        "code": "parseInt(taskId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 402,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 540,
+        "code": "max_users: parseInt(max_users) || 5,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 584,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 622,
+        "code": "if (max_users !== undefined) updateData.max_users = parseInt(max_users);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 669,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 755,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 816,
+        "code": "const planId = parseInt(req.params.planId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 994,
+        "code": "const planId = parseInt(req.params.planId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1246,
+        "code": "baseQuery += ` AND cs.plan_id = ${parseInt(plan_id)}`;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1323,
+        "code": "where: { id: parseInt(plan_id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1343,
+        "code": "plan_id: parseInt(plan_id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1351,
+        "code": "plan_id: parseInt(plan_id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionCouponRoutes.js",
+        "line": 119,
+        "code": "planId: planId ? parseInt(planId) : undefined,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionCouponRoutes.js",
+        "line": 492,
+        "code": "plan_id: parseInt(planId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionCouponRoutes.js",
+        "line": 527,
+        "code": "where: { id: parseInt(id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionPlans.js",
+        "line": 299,
+        "code": "const numericId = parseInt(id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionPlans.js",
+        "line": 443,
+        "code": "const numericId = parseInt(id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionPlans.js",
+        "line": 526,
+        "code": "const numericId = parseInt(id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/subscriptionPlans.js",
+        "line": 589,
+        "code": "const numericId = parseInt(id, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 304,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 372,
+        "code": "const planId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 482,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 542,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 574,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 613,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 685,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 763,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 801,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 865,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 933,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 965,
+        "code": "const clientId = parseInt(req.params.clientId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 1036,
+        "code": "const overrideId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/superAdminSubscription.js",
+        "line": 1075,
+        "code": "if (client_id) where.client_id = parseInt(client_id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/systemHealth.js",
+        "line": 741,
+        "code": "activeUsers = parseInt(activeUsersResult[0]?.count || 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 338,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 369,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 396,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 428,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 463,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 499,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 527,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 563,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 602,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRequestRoutes.js",
+        "line": 630,
+        "code": "parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 69,
+        "code": "params.push(parseInt(creator_id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 73,
+        "code": "params.push(parseInt(approver_id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 148,
+        "code": "const userIdInt = parseInt(userId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/taskWorkbenchRoutes.js",
+        "line": 32,
+        "code": "const parsed = parseInt(rawId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/users.js",
+        "line": 698,
+        "code": "where: { id: parseInt(roleId, 10) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 479,
+        "code": "params.push(parseInt(industry_id));",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/welcomeRoutes.js",
+        "line": 255,
+        "code": "const clientId = typeof tenantIdValue === 'string' ? parseInt(tenantIdValue, 10) : tenantIdValue;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/database-index-audit.js",
+        "line": 332,
+        "code": "const totalSize = indexes.reduce((sum, idx) => sum + parseInt(idx.size_bytes), 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/database-index-audit.js",
+        "line": 351,
+        "code": "const totalWaste = unused.reduce((sum, idx) => sum + parseInt(idx.size_bytes), 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/sync-common-pages.js",
+        "line": 36,
+        "code": "const specificUserId = userIdArg ? parseInt(userIdArg.split('=')[1]) : null;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/test-subscription-limits.js",
+        "line": 55,
+        "code": "const maxUsers = parseInt(sub.rows[0]?.max_users || 5);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/test-subscription-limits.js",
+        "line": 56,
+        "code": "const activeUsers = parseInt(userCount.rows[0]?.active || 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/test-subscription-limits.js",
+        "line": 57,
+        "code": "const totalUsers = parseInt(userCount.rows[0]?.total || 0);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/beyTools.js",
+        "line": 54,
+        "code": "const parsed = parseInt(rawId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 1063,
+        "code": "if (conversationId && !isNaN(parseInt(conversationId)) && !String(conversationId).includes('session'",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 1064,
+        "code": "actualConversationId = parseInt(conversationId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/authorizationService.js",
+        "line": 58,
+        "code": "where: { user_id: user.legacy_id || parseInt(userId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/billing/microUnlockBillingEngine.js",
+        "line": 457,
+        "code": "totalUsers: parseInt(userCount?.total || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/billing/microUnlockBillingEngine.js",
+        "line": 458,
+        "code": "activeUsers: parseInt(userCount?.active || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/billing/microUnlockBillingEngine.js",
+        "line": 566,
+        "code": "tenantCount: parseInt(r.tenant_count),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/billing/microUnlockBillingEngine.js",
+        "line": 571,
+        "code": "tenantsWithUnlocks: parseInt(unlockStats?.tenants_with_unlocks || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/effectiveAccessService.js",
+        "line": 554,
+        "code": "const numericId = parseInt(clientAdminId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/effectiveAccessService.js",
+        "line": 861,
+        "code": "const numericSuperadminId = parseInt(superadminId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/effectiveAccessService.js",
+        "line": 882,
+        "code": "const numericUserId = parseInt(userId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacInvariantService.js",
+        "line": 55,
+        "code": "WHERE superadmin_id = ${parseInt(saId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacInvariantService.js",
+        "line": 56,
+        "code": "AND page_id = ${parseInt(pageId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacInvariantService.js",
+        "line": 76,
+        "code": "AND page_id = ${parseInt(pageId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacInvariantService.js",
+        "line": 127,
+        "code": "WHERE superadmin_id = ${parseInt(saId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacInvariantService.js",
+        "line": 258,
+        "code": "WHERE superadmin_id = ${parseInt(saId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 555,
+        "code": "SELECT id, name, level, tenant_id FROM rbac_roles WHERE id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 560,
+        "code": "SELECT id, name, level FROM rbac_roles WHERE id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 763,
+        "code": "DELETE FROM rbac_permissions WHERE role_id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 773,
+        "code": "return { success: true, assigned: 0, roleId: parseInt(roleId) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 786,
+        "code": "WHERE p.id = ANY(${permissionIds.map(id => parseInt(id))}::int[])",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 790,
+        "code": "const missingIds = permissionIds.filter(id => !foundIds.includes(parseInt(id)))",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 808,
+        "code": "SELECT id, name, level FROM rbac_roles WHERE id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 824,
+        "code": "role_id: parseInt(roleId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 834,
+        "code": "DELETE FROM rbac_permissions WHERE role_id = ${parseInt(roleId)}",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 857,
+        "code": "roleId: parseInt(roleId)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 919,
+        "code": "userId: parseInt(assignerId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/rbacService.js",
+        "line": 921,
+        "code": "roleId: parseInt(roleId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/subscriptionCouponService.js",
+        "line": 223,
+        "code": "if (typeof actor.id === 'number' || !isNaN(parseInt(actor.id))) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/subscriptionCouponService.js",
+        "line": 227,
+        "code": "{ super_admin_id: parseInt(actor.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/subscriptionCouponService.js",
+        "line": 228,
+        "code": "{ legacy_id: parseInt(actor.id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/subscriptionCouponService.js",
+        "line": 246,
+        "code": "if (typeof planId === 'number' || !isNaN(parseInt(planId))) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/subscriptionCouponService.js",
+        "line": 249,
+        "code": "where: { id: parseInt(planId) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 92,
+        "code": "const numericId = parseInt(userId, 10);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/bill.routes.ts",
+        "line": 347,
+        "code": "assigneeId: parseInt(assigneeId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/chatRoutes.ts",
+        "line": 218,
+        "code": "const taskId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/chatRoutes.ts",
+        "line": 301,
+        "code": "const taskId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/chatRoutes.ts",
+        "line": 344,
+        "code": "const taskId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/chatRoutes.ts",
+        "line": 390,
+        "code": "const taskId = parseInt(req.params.id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 88,
+        "code": "where: { id: parseInt(id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 260,
+        "code": "where: { id: parseInt(id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 288,
+        "code": "where: { id: parseInt(id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 327,
+        "code": "where: { id: parseInt(id) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 346,
+        "code": "where: { id: parseInt(id) }",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/subscriptionManagement.ts",
+        "line": 355,
+        "code": "record_id: parseInt(id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/ultimateChatRoutes.ts",
+        "line": 74,
+        "code": "(req as AuthenticatedRequest).userId = typeof userId === 'string' ? parseInt(userId, 10) : userId;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 631,
+        "code": "branch_id: parseInt(branch_id),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/tools/validate-audit-logs.js",
+        "line": 208,
+        "code": "this.stats.uniqueUsers = parseInt(usersResult.rows[0].count);",
+        "severity": "HIGH"
+      }
+    ],
+    "Number": [
+      {
+        "file": "my-backend/middleware/tenantQuota.js",
+        "line": 136,
+        "code": "storageBytesLimit: Number(tenantQuota.storageBytesLimit),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/socket/presence.js",
+        "line": 37,
+        "code": "where: { userId: Number(userId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/billing.js",
+        "line": 545,
+        "code": "amount_paid: Number(inv.amount_paid),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/billing.js",
+        "line": 609,
+        "code": "amount_paid: Number(invoice.amount_paid),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/billing.js",
+        "line": 820,
+        "code": "activeUsers: Number(d.active_users || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 565,
+        "code": "const updated = await prisma.client_module_permissions.upsert({ where: { client_id_module_id: { clie",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 565,
+        "code": "const updated = await prisma.client_module_permissions.upsert({ where: { client_id_module_id: { clie",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/pageSyncAudit.js",
+        "line": 704,
+        "code": "database_pages_in_sidebar: Number(dbResult[0]?.in_sidebar || 0),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 481,
+        "code": "await rbacService.setRoleStatus(Number(roleId), is_active);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/usageEvents.js",
+        "line": 14,
+        "code": "const created = await prisma.clientUsageEvent.create({ data: { event_type, module_id: module_id ? Nu",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/welcomeRoutes.js",
+        "line": 130,
+        "code": "const maxUsers = Number(p.max_users) || 5;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowServiceV2.js",
+        "line": 603,
+        "code": "async function generatePaymentRequestNumber(tenantId) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowServiceV2.js",
+        "line": 725,
+        "code": "const requestNumber = await generatePaymentRequestNumber(tenantId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 940,
+        "code": "const settlementNumber = await generateSettlementNumber(tenantId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 1720,
+        "code": "async function generateSettlementNumber(tenantId) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 193,
+        "code": "where: { id: Number(roleId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 352,
+        "code": "const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 352,
+        "code": "const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 363,
+        "code": "user_id: Number(userId),",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/userCreationValidator.js",
+        "line": 246,
+        "code": "if (max_users !== null && Number(current_count) >= Number(max_users)) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/userService.js",
+        "line": 170,
+        "code": "if (Number(current_count) >= Number(max_users)) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/userService.js",
+        "line": 457,
+        "code": "const generatedLegacyId = Number(legacyIdResult[0]?.legacy_id);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/socket/presence.js",
+        "line": 37,
+        "code": "where: { userId: Number(userId) },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/middleware/planModuleAccess.ts",
+        "line": 307,
+        "code": "user_id: req.user?.id ? Number(req.user.id) : null,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/clientManagement.ts",
+        "line": 302,
+        "code": "const u = await prismaAny.user.findUnique({ where: { id: Number(uid) } }).catch(() => null);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/clientManagement.ts",
+        "line": 628,
+        "code": "const modId = Number(moduleId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/tasks.ts",
+        "line": 49,
+        "code": "if (assigneeId) where.assigneeId = Number(assigneeId);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/tasks.ts",
+        "line": 50,
+        "code": "if (createdById) where.createdById = Number(createdById);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/usageEvents.ts",
+        "line": 19,
+        "code": "module_id: module_id ? Number(module_id) : null,",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 193,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 193,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 469,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 469,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 699,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 699,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 849,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/users.ts",
+        "line": 849,
+        "code": "{ legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/utils/entityDisplay.js",
+        "line": 69,
+        "code": "const paddedId = isNaN(Number(idStr)) ? idStr : String(id).padStart(5, '0');",
+        "severity": "HIGH"
+      }
+    ],
+    "selectStar": [
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 744,
+        "code": "SELECT * FROM qa_issues WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 862,
+        "code": "SELECT * FROM task_attachments",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 1415,
+        "code": "SELECT * FROM task_messages",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 2948,
+        "code": "'SELECT * FROM task_templates WHERE id = $1 AND is_active = true',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 731,
+        "code": "let existingQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 863,
+        "code": "let existingQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 1041,
+        "code": "let existingQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 1127,
+        "code": "let existingQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 1558,
+        "code": "let taskQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/jobs/cleanupJobs.js",
+        "line": 163,
+        "code": "SELECT * FROM moved",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/middleware/subscriptionEnforcement.js",
+        "line": 187,
+        "code": "SELECT * FROM get_tenant_plan_features(${tenantId}::uuid)",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/middleware/subscriptionEnforcement.js",
+        "line": 216,
+        "code": "SELECT * FROM check_feature_enforcement(${tenantId}::uuid, ${featureCode})",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/messages.js",
+        "line": 309,
+        "code": "SELECT * FROM chat_conversations",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/preprocessor.js",
+        "line": 392,
+        "code": "SELECT * FROM spellcheck_settings",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/workflows.js",
+        "line": 199,
+        "code": "SELECT * FROM search_results",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/aiAnalyticsRoute.js",
+        "line": 188,
+        "code": "SELECT *",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/approverRoutes.js",
+        "line": 31,
+        "code": "let query = 'SELECT * FROM workflow_task_approvers';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/approverRoutes.js",
+        "line": 120,
+        "code": "SELECT * FROM workflow_task_approvers",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/approverRoutes.js",
+        "line": 170,
+        "code": "SELECT * FROM workflow_task_approvers WHERE id = ${id}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/approverRoutes.js",
+        "line": 288,
+        "code": "SELECT * FROM workflow_task_approvers",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/assets.js",
+        "line": 869,
+        "code": "'SELECT * FROM assets WHERE id = $1 AND tenant_id = $2 AND is_deleted = false',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/assets.js",
+        "line": 1243,
+        "code": "SELECT * FROM asset_history",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 128,
+        "code": "SELECT * FROM audit_logs WHERE id = ${parseInt(id)}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 149,
+        "code": "SELECT * FROM v_audit_summary_24h",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 187,
+        "code": "SELECT * FROM v_service_usage_summary",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 318,
+        "code": "`SELECT * FROM security_events ${whereSQL}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 338,
+        "code": "SELECT * FROM v_security_events_24h",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 428,
+        "code": "prisma.$queryRaw`SELECT * FROM v_audit_summary_24h LIMIT 10`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 431,
+        "code": "prisma.$queryRaw`SELECT * FROM v_service_usage_summary`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 434,
+        "code": "prisma.$queryRaw`SELECT * FROM v_security_events_24h`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 546,
+        "code": "SELECT * FROM statement_logs",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 572,
+        "code": "SELECT * FROM cleanup_old_audit_logs(${parseInt(days_to_keep)})",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/enterpriseSubscriptionRoutes.js",
+        "line": 595,
+        "code": "SELECT * FROM plan_module_access",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/enterpriseSubscriptionRoutes.js",
+        "line": 601,
+        "code": "SELECT * FROM plan_feature_controls",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/fallbackLogsRoutes.js",
+        "line": 205,
+        "code": "SELECT * FROM fallback_alerts",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/fallbackLogsRoutes.js",
+        "line": 411,
+        "code": "SELECT * FROM fallback_alerts",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 550,
+        "code": "SELECT * FROM support_sessions WHERE id = ${parseInt(sessionId)}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/serviceTableUsage.js",
+        "line": 487,
+        "code": "SELECT * FROM suspicious_services ORDER BY marked_at DESC",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/serviceTableUsage.js",
+        "line": 491,
+        "code": "SELECT * FROM suspicious_services",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 913,
+        "code": "SELECT * FROM master_feature_definitions",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 959,
+        "code": "SELECT * FROM master_feature_definitions WHERE feature_code = ${feature_code}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1012,
+        "code": "SELECT * FROM plan_feature_controls WHERE plan_id = ${planId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1097,
+        "code": "SELECT * FROM plan_feature_controls WHERE plan_id = ${planId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1135,
+        "code": "SELECT * FROM infrastructure_billing_rates",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1165,
+        "code": "SELECT * FROM infrastructure_billing_rates WHERE resource_type = ${resourceType}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1183,
+        "code": "SELECT * FROM infrastructure_billing_rates WHERE resource_type = ${resourceType}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1408,
+        "code": "SELECT * FROM plan_change_audit_log",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1583,
+        "code": "SELECT * FROM custom_tenant_plan_configurations WHERE tenant_id = ${tenantId}::uuid",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/subscriptionControlRoutes.js",
+        "line": 1888,
+        "code": "SELECT * FROM custom_plan_audit_log",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 80,
+        "code": "`SELECT * FROM workflow_tasks ${whereClause} ORDER BY created_at DESC`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 249,
+        "code": "SELECT * FROM workflow_tasks WHERE id = ${id}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 258,
+        "code": "SELECT * FROM workflow_task_approvers",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 373,
+        "code": "SELECT * FROM workflow_tasks WHERE id = ${id}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 384,
+        "code": "SELECT * FROM workflow_task_approvers",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 471,
+        "code": "SELECT * FROM workflow_task_history",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 492,
+        "code": "SELECT * FROM workflow_task_comments",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 552,
+        "code": "SELECT * FROM workflow_tasks WHERE id = ${id}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 577,
+        "code": "pool.query(`SELECT * FROM vendor_contacts WHERE vendor_id = $1 AND is_active = true ORDER BY is_prim",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 578,
+        "code": "pool.query(`SELECT * FROM vendor_addresses WHERE vendor_id = $1 AND is_active = true ORDER BY is_pri",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 579,
+        "code": "pool.query(`SELECT * FROM vendor_documents WHERE vendor_id = $1 AND is_active = true ORDER BY create",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 580,
+        "code": "pool.query(`SELECT * FROM vendor_banks WHERE vendor_id = $1 AND is_active = true ORDER BY is_primary",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 581,
+        "code": "pool.query(`SELECT * FROM vendor_risk_assessments WHERE vendor_id = $1 ORDER BY assessment_date DESC",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 582,
+        "code": "pool.query(`SELECT * FROM vendor_approvals WHERE vendor_id = $1 ORDER BY created_at DESC LIMIT 10`, ",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 583,
+        "code": "pool.query(`SELECT * FROM vendor_audit_logs WHERE vendor_id = $1 ORDER BY created_at DESC LIMIT 20`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 796,
+        "code": "`SELECT * FROM vendor_legal WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 973,
+        "code": "`SELECT * FROM vendor_legal WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 1050,
+        "code": "`SELECT * FROM vendor_legal WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 1132,
+        "code": "`SELECT * FROM vendor_legal WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/vendorLegal.js",
+        "line": 1721,
+        "code": "SELECT * FROM vendor_audit_logs",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/welcomeRoutes.js",
+        "line": 314,
+        "code": "SELECT * FROM master_subscription_plans WHERE code = ${planCode.toUpperCase()} LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/scripts/database-index-audit.js",
+        "line": 185,
+        "code": "SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/scripts/decommission/step9-final-deletion.js",
+        "line": 126,
+        "code": "`SELECT * FROM \"${backupTableName}\"`",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/scripts/test/test-server.js",
+        "line": 33,
+        "code": "query: 'SELECT * FROM users WHERE role = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/security/BackgroundJobRLS.js",
+        "line": 166,
+        "code": "*     const rows = await client.query('SELECT * FROM orders WHERE status = $1', ['pending']);",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/security/BackgroundJobRLS.js",
+        "line": 403,
+        "code": "let query = `SELECT * FROM ${JOB_AUDIT_TABLE} WHERE 1=1`;",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/security/rbacInvariants.js",
+        "line": 155,
+        "code": "SELECT * FROM chain_check",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 498,
+        "code": "SELECT * FROM payment_requests WHERE id = ${paymentRequestId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 590,
+        "code": "SELECT * FROM payment_requests WHERE id = ${paymentRequestId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 698,
+        "code": "SELECT * FROM payment_requests WHERE id = ${paymentRequestId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 775,
+        "code": "SELECT * FROM payment_requests WHERE id = ${paymentRequestId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 958,
+        "code": "SELECT * FROM payment_request_approvals",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowService.js",
+        "line": 965,
+        "code": "SELECT * FROM payment_request_stages",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowServiceV2.js",
+        "line": 764,
+        "code": "SELECT * FROM payment_requests WHERE id = ${paymentRequestId}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 142,
+        "code": "SELECT * FROM check_idempotency_key(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 244,
+        "code": "SELECT * FROM acquire_consolidation_lock(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 336,
+        "code": "SELECT * FROM check_maker_checker(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 361,
+        "code": "SELECT * FROM record_settlement_actor(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 394,
+        "code": "SELECT * FROM generate_approval_token(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 431,
+        "code": "SELECT * FROM validate_approval_token(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 554,
+        "code": "SELECT * FROM check_execution_timeout(${settlementId}::UUID)",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 1689,
+        "code": "SELECT * FROM settlements WHERE id = ${settlementId}::uuid",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 690,
+        "code": "SELECT * FROM search_results",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 1302,
+        "code": "? `SELECT * FROM v_user_chat_summary WHERE user_id = $1`",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 1303,
+        "code": ": `SELECT * FROM v_chat_intent_analytics LIMIT 50`;",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/aiAnalyticsEngine.js",
+        "line": 218,
+        "code": "SELECT *",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 218,
+        "code": "return await prisma.$queryRaw`SELECT * FROM v_audit_summary_24h`;",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 231,
+        "code": "return await prisma.$queryRaw`SELECT * FROM v_service_usage_summary`;",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 244,
+        "code": "return await prisma.$queryRaw`SELECT * FROM v_security_events_24h`;",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/chat/preprocessor.js",
+        "line": 610,
+        "code": "'SELECT * FROM preprocessor_audit WHERE id = $1 AND user_id = $2',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/chat/taskService.js",
+        "line": 65,
+        "code": "SELECT * FROM chat_tasks",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/chat/taskService.js",
+        "line": 113,
+        "code": "SELECT * FROM chat_tasks",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/clarificationService.js",
+        "line": 727,
+        "code": "SELECT * FROM task_clarifications",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 94,
+        "code": "SELECT * FROM feature_catalog",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 114,
+        "code": "SELECT * FROM feature_catalog WHERE feature_key = ${featureKey}",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 203,
+        "code": "SELECT * FROM check_feature_access(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 246,
+        "code": "SELECT * FROM increment_usage_counter(",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 776,
+        "code": "SELECT * FROM resource_consumption",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 850,
+        "code": "SELECT * FROM micro_unlock_audit_log",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/subscription/microUnlockService.js",
+        "line": 873,
+        "code": "SELECT * FROM micro_subscription_plans",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/superAdminService.js",
+        "line": 296,
+        "code": "`SELECT * FROM \"${tableName}\" OFFSET ${offset} LIMIT ${limit}`",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 453,
+        "code": "'SELECT * FROM task_requests WHERE id = $1 FOR UPDATE',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 582,
+        "code": "'SELECT * FROM task_requests WHERE id = $1 FOR UPDATE',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 723,
+        "code": "'SELECT * FROM task_requests WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 801,
+        "code": "'SELECT * FROM task_requests WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 875,
+        "code": "'SELECT * FROM task_requests WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 942,
+        "code": "'SELECT * FROM task_requests WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 1008,
+        "code": "'SELECT * FROM task_requests WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/routes/copilate.ts",
+        "line": 174,
+        "code": "SELECT * FROM pending_candidates",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/routes/copilate.ts",
+        "line": 300,
+        "code": "SELECT * FROM bot_metrics",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/routes/copilate.ts",
+        "line": 340,
+        "code": "SELECT * FROM unknown_terms",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/routes/vendors.ts",
+        "line": 436,
+        "code": "SELECT * FROM non_privileged_users",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/routes/vendors.ts",
+        "line": 673,
+        "code": "SELECT * FROM non_privileged_users",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 187,
+        "code": "SELECT * FROM approval_workflow_templates",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 198,
+        "code": "SELECT * FROM approval_workflow_templates",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 209,
+        "code": "SELECT * FROM approval_workflow_stages",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 743,
+        "code": "SELECT * FROM approval_workflow_templates WHERE id = ${workflowTemplateId}::uuid AND is_active = tru",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 794,
+        "code": "SELECT * FROM approval_instances WHERE id = ${instanceId}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 844,
+        "code": "SELECT * FROM approval_stage_instances",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 867,
+        "code": "SELECT * FROM approval_instances",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 938,
+        "code": "SELECT * FROM approval_stage_instances WHERE approval_instance_id = ${instance.id}::uuid AND workflo",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 990,
+        "code": "const instances = await prisma.$queryRaw<ApprovalInstance[]>`SELECT * FROM approval_instances WHERE ",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 992,
+        "code": "const stages = await prisma.$queryRaw<ApprovalStageInstance[]>`SELECT * FROM approval_stage_instance",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 1013,
+        "code": "SELECT * FROM approval_instances WHERE entity_type = ${entityType} AND entity_id = ${entityId}::uuid",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 1024,
+        "code": "SELECT * FROM approval_stage_instances",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 1088,
+        "code": "SELECT * FROM approval_stage_instances",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 1124,
+        "code": "SELECT * FROM approval_instances WHERE id = ${instanceId}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/ApprovalWorkflowService.ts",
+        "line": 1344,
+        "code": "SELECT * FROM approval_instances WHERE id = ${instanceId}::uuid LIMIT 1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/chat/taskService.ts",
+        "line": 100,
+        "code": "SELECT * FROM tasks",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/chat/taskService.ts",
+        "line": 141,
+        "code": "let query = 'SELECT * FROM tasks WHERE user_id = $1 AND ($2::uuid IS NULL OR tenant_id = $2)';",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/chat/taskService.ts",
+        "line": 191,
+        "code": "const query = 'SELECT * FROM tasks WHERE id = $1 AND user_id = $2 AND ($3::uuid IS NULL OR tenant_id",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/chat/taskService.ts",
+        "line": 340,
+        "code": "SELECT * FROM tasks",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/chat/taskService.ts",
+        "line": 364,
+        "code": "SELECT * FROM tasks",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/src/services/copilateSmartAgent.ts",
+        "line": 805,
+        "code": "SELECT * FROM knowledge_base",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/tests/featureGate.spec.js",
+        "line": 279,
+        "code": "SELECT * FROM access_requests WHERE id = $1",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/tests/rbac.privilege.test.js",
+        "line": 270,
+        "code": "// In integration tests, we'd query: SELECT * FROM security_events WHERE event_type = 'ROLE_PERMISSI",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/tests/rls.test.js",
+        "line": 283,
+        "code": "`SELECT * FROM payment_requests WHERE id = $1`,",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/tests/rls.test.js",
+        "line": 312,
+        "code": "SELECT * FROM payment_requests",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/utils/idGenerator.js",
+        "line": 108,
+        "code": "SELECT * FROM entity_id_registry",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/utils/idGenerator.js",
+        "line": 170,
+        "code": "SELECT * FROM entity_id_registry",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/utils/uuid-helpers.js",
+        "line": 20,
+        "code": "*     'SELECT * FROM users_enhanced WHERE id = $1',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/utils/uuid-helpers.js",
+        "line": 177,
+        "code": "* Usage: sql`SELECT * FROM users WHERE id = ${userId}`",
+        "severity": "MEDIUM"
+      }
+    ],
+    "localhost": [
+      {
+        "file": "my-backend/app.js",
+        "line": 310,
+        "code": "process.env.FRONTEND_URL || 'http://localhost:3000',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 317,
+        "code": "['http://localhost:3000','http://127.0.0.1:3000'].forEach(l => { if (!allowedOrigins.includes(l)) al",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 346,
+        "code": "if (!isProd && origin.startsWith('http://localhost:')) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/app.js",
+        "line": 5834,
+        "code": "console.log(`[Admin Password Reset] Reset link: ${process.env.FRONTEND_URL || 'http://localhost:3000",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/examples/server-example-production-ready.js",
+        "line": 39,
+        "code": "const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/examples/server-example-production-ready.js",
+        "line": 49,
+        "code": "'http://localhost:3001', // Backend itself (for testing)",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/examples/server-example-production-ready.js",
+        "line": 81,
+        "code": "if (!isProd && origin.startsWith('http://localhost:')) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/knexfile.js",
+        "line": 42,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/knexfile.js",
+        "line": 83,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/adminIpAllowlist.js",
+        "line": 49,
+        "code": "if (ip === '::1' || ip === '127.0.0.1' || ip === 'localhost') {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/adminIpAllowlist.js",
+        "line": 82,
+        "code": "const isLocalhost = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'].includes(clientIp);",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/securityHeaders.ts",
+        "line": 107,
+        "code": "const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/securityHeaders.ts",
+        "line": 119,
+        "code": "'http://localhost:3000',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/middleware/securityHeaders.ts",
+        "line": 120,
+        "code": "'http://localhost:3001',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/ai.js",
+        "line": 22,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/messages.js",
+        "line": 19,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/workflows.js",
+        "line": 19,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/routes/chat/training.js",
+        "line": 28,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/database-index-audit.js",
+        "line": 39,
+        "code": "host: process.env.DATABASE_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/k6-login-test.js",
+        "line": 94,
+        "code": "const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/test/test-server.js",
+        "line": 8,
+        "code": "origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/scripts/verify-sidebar-rbac.js",
+        "line": 17,
+        "code": "const API_BASE = process.env.API_BASE || 'http://localhost:5000';",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 79,
+        "code": "process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 150,
+        "code": "process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 156,
+        "code": "if (allowedOrigins.includes(origin) || (!isProd && origin.startsWith('http://localhost:'))) {",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 178,
+        "code": "process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 182,
+        "code": "if (origin && (allowedOrigins.includes(origin) || (!isProd && origin.startsWith('http://localhost:')",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/server.js",
+        "line": 304,
+        "code": "process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/advancedTrainingService.js",
+        "line": 28,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/beyLLMEngine.js",
+        "line": 25,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/beyTools.js",
+        "line": 30,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/ai/unifiedChatEngine.js",
+        "line": 32,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/services/aiService.js",
+        "line": 8,
+        "code": "const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:11434';",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/routes/ultimateChatRoutes.ts",
+        "line": 30,
+        "code": "host: process.env.DB_HOST || 'localhost',",
+        "severity": "HIGH"
+      },
+      {
+        "file": "my-backend/src/services/aiIntegration.ts",
+        "line": 9,
+        "code": "const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:8000';",
+        "severity": "HIGH"
+      }
+    ],
+    "hardcodedUrls": [
+      {
+        "file": "my-backend/examples/server-example-production-ready.js",
+        "line": 342,
+        "code": "fetch('http://localhost:3001/api/health', {",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/admin/auditRoutes.js",
+        "line": 521,
+        "code": "* curl -X GET \"http://localhost:3001/api/audit/services\" \\",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/admin/auditRoutes.js",
+        "line": 525,
+        "code": "* curl -X GET \"http://localhost:3001/api/audit/services?service=inventory&page=1&pageSize=10\" \\",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/admin/auditRoutes.js",
+        "line": 529,
+        "code": "* curl -X GET \"http://localhost:3001/api/audit/services/inventory-service?table=items\" \\",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/admin/auditRoutes.js",
+        "line": 533,
+        "code": "* curl -X GET \"http://localhost:3001/api/audit/tables\" \\",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 88,
+        "code": "acsUrl: 'https://bisman-erp.com/api/auth/saml/callback',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 89,
+        "code": "singleLogoutUrl: 'https://bisman-erp.com/api/auth/saml/logout',",
+        "severity": "MEDIUM"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Integrations.js",
+        "line": 349,
+        "code": "targetUrl: 'https://slack.com/api/webhooks/security',",
+        "severity": "MEDIUM"
+      }
+    ],
+    "rawSql": [],
+    "missingValidation": []
+  },
+  "summary": [
+    {
+      "category": "parseInt",
+      "count": 258,
+      "severity": "HIGH"
+    },
+    {
+      "category": "Number",
+      "count": 38,
+      "severity": "HIGH"
+    },
+    {
+      "category": "selectStar",
+      "count": 151,
+      "severity": "MEDIUM"
+    },
+    {
+      "category": "localhost",
+      "count": 35,
+      "severity": "HIGH"
+    },
+    {
+      "category": "hardcodedUrls",
+      "count": 8,
+      "severity": "MEDIUM"
+    }
+  ]
+}

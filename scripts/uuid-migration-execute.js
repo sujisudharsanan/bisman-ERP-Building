@@ -16,7 +16,6 @@
 
 const { Pool } = require('pg');
 const fs = require('fs');
-const path = require('path');
 
 const DATABASE_URL = process.env.DATABASE_URL || 
   'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway';
