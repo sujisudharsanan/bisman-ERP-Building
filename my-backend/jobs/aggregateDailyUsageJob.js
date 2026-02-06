@@ -157,7 +157,7 @@ async function aggregateTenantUsage(tenantId, startDate, endDate, stats) {
   }, {});
 
   // Get previous day's storage for cumulative calculation
-  const previousUsage = await prisma.tenantUsage.findFirst({
+  const previousUsage = await prisma.tenant_usage.findFirst({
     where: {
       tenant_id: tenantId,
       date: {
@@ -173,7 +173,7 @@ async function aggregateTenantUsage(tenantId, startDate, endDate, stats) {
   const dateOnly = new Date(startDate);
   dateOnly.setUTCHours(0, 0, 0, 0);
 
-  await prisma.tenantUsage.upsert({
+  await prisma.tenant_usage.upsert({
     where: {
       tenant_id_date: {
         tenant_id: tenantId,
@@ -224,7 +224,7 @@ async function updateInactiveTenantsStorage(date, activeTenantIds) {
 
   for (const tenant of inactiveTenants) {
     // Get previous storage
-    const previousUsage = await prisma.tenantUsage.findFirst({
+    const previousUsage = await prisma.tenant_usage.findFirst({
       where: {
         tenant_id: tenant.id,
         date: { lt: dateOnly }
@@ -234,7 +234,7 @@ async function updateInactiveTenantsStorage(date, activeTenantIds) {
 
     if (previousUsage && previousUsage.storage_bytes > 0) {
       // Create entry with just storage (no activity)
-      await prisma.tenantUsage.upsert({
+      await prisma.tenant_usage.upsert({
         where: {
           tenant_id_date: {
             tenant_id: tenant.id,

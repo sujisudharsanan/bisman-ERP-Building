@@ -93,7 +93,7 @@ async function checkTenantQuota(tenant, today) {
   quota = quota || defaults[tenant.subscriptionPlan] || defaults.free;
 
   // Get today's usage
-  const usage = await prisma.clientDailyUsage.findFirst({
+  const usage = await prisma.client_daily_usage.findFirst({
     where: {
       client_id: tenant.id,
       date: new Date(today)
@@ -184,7 +184,7 @@ async function checkErrorBudget() {
     for (const tenant of tenants) {
       try {
         // Get usage for last 30 days
-        const usage = await prisma.clientDailyUsage.findMany({
+        const usage = await prisma.client_daily_usage.findMany({
           where: {
             client_id: tenant.id,
             date: { gte: thirtyDaysAgo }

@@ -649,7 +649,7 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req, res) => {
     const isCrossTenant = hasCrossTenantScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
     if (!isCrossTenant && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
-  const usage = await prisma.clientDailyUsage.findMany({ where: { client_id: clientId }, orderBy: { date: 'desc' }, take: 30 });
+  const usage = await prisma.client_daily_usage.findMany({ where: { client_id: clientId }, orderBy: { date: 'desc' }, take: 30 });
     res.json({ success: true, data: usage });
   } catch (e) { res.status(500).json({ error: 'Failed to fetch usage', details: e.message }); }
 });

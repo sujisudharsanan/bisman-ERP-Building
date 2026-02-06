@@ -95,7 +95,7 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
     }
 
     // Get daily usage for the period
-    const dailyUsage = await prisma.clientDailyUsage.findMany({
+    const dailyUsage = await prisma.client_daily_usage.findMany({
       where: {
         client_id: tenantId,
         date: {
@@ -124,7 +124,7 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
 
     // Get today's usage for real-time quota display
     const today = new Date().toISOString().split('T')[0];
-    const todayUsage = await prisma.clientDailyUsage.findFirst({
+    const todayUsage = await prisma.client_daily_usage.findFirst({
       where: {
         client_id: tenantId,
         date: new Date(today)
@@ -338,7 +338,7 @@ router.get('/:id/metrics', authenticateToken, requireAdminAccess, async (req, re
     }
 
     // Get daily usage for error calculations
-    const dailyUsage = await prisma.clientDailyUsage.findMany({
+    const dailyUsage = await prisma.client_daily_usage.findMany({
       where: {
         client_id: tenantId,
         date: {
@@ -510,7 +510,7 @@ router.get('/:id/summary', authenticateToken, requireAdminAccess, async (req, re
 
     // Get today's usage
     const today = new Date().toISOString().split('T')[0];
-    const todayUsage = await prisma.clientDailyUsage.findFirst({
+    const todayUsage = await prisma.client_daily_usage.findFirst({
       where: {
         client_id: tenantId,
         date: new Date(today)
@@ -518,7 +518,7 @@ router.get('/:id/summary', authenticateToken, requireAdminAccess, async (req, re
     });
 
     // Get last 7 days for trend
-    const last7Days = await prisma.clientDailyUsage.findMany({
+    const last7Days = await prisma.client_daily_usage.findMany({
       where: {
         client_id: tenantId,
         date: {
