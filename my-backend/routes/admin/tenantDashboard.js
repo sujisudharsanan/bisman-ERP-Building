@@ -74,10 +74,25 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
       });
     }
 
-    // Get quota limits
-    const quota = await prisma.tenantQuota.findUnique({
-      where: { tenantId }
-    });
+    // Get quota limits (tenantQuota model may not exist, use defaults based on plan)
+    let quota = null;
+    try {
+      if (prisma.tenantQuota) {
+        quota = await prisma.tenantQuota.findUnique({
+          where: { tenantId }
+        });
+      }
+    } catch {
+      // Table doesn't exist, use defaults
+    }
+    if (!quota) {
+      const defaults = {
+        free: { apiCallsPerDay: 5000, storageBytesLimit: 1073741824, activeUsersLimit: 10 },
+        pro: { apiCallsPerDay: 50000, storageBytesLimit: 10737418240, activeUsersLimit: 25 },
+        enterprise: { apiCallsPerDay: 500000, storageBytesLimit: 107374182400, activeUsersLimit: 100 }
+      };
+      quota = defaults[tenant.subscriptionPlan] || defaults.free;
+    }
 
     // Get daily usage for the period
     const dailyUsage = await prisma.clientDailyUsage.findMany({
@@ -472,10 +487,26 @@ router.get('/:id/summary', authenticateToken, requireAdminAccess, async (req, re
       });
     }
 
-    // Get quota
-    const quota = await prisma.tenantQuota.findUnique({
-      where: { tenantId }
-    });
+    // Get quota (tenantQuota model may not exist, use defaults based on plan)
+    let quota = null;
+    try {
+      if (prisma.tenantQuota) {
+        quota = await prisma.tenantQuota.findUnique({
+          where: { tenantId }
+        });
+      }
+    } catch {
+      // Table doesn't exist, use defaults
+    }
+    if (!quota) {
+      // Default quotas based on plan
+      const defaults = {
+        free: { apiCallsPerDay: 5000, storageBytesLimit: 1073741824, activeUsersLimit: 10 },
+        pro: { apiCallsPerDay: 50000, storageBytesLimit: 10737418240, activeUsersLimit: 25 },
+        enterprise: { apiCallsPerDay: 500000, storageBytesLimit: 107374182400, activeUsersLimit: 100 }
+      };
+      quota = defaults[tenant.subscriptionPlan] || defaults.free;
+    }
 
     // Get today's usage
     const today = new Date().toISOString().split('T')[0];

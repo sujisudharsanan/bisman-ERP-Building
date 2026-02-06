@@ -120,10 +120,10 @@ async function getTenantQuota(tenantId) {
     return cached.quota;
   }
   
-  // Try to fetch from database
+  // Try to fetch from database (tenantQuota model may not exist)
   try {
     const prisma = getPrimary();
-    if (prisma) {
+    if (prisma && prisma.tenantQuota) {
       const tenantQuota = await prisma.tenantQuota.findUnique({
         where: { tenantId },
       });
@@ -175,13 +175,14 @@ async function getTenantQuota(tenantId) {
 
 /**
  * Set quota for a tenant (admin function)
+ * Note: tenantQuota model may not exist, so we gracefully skip DB operations
  */
 async function setTenantQuota(tenantId, plan, customLimits = null) {
   const baseQuota = DEFAULT_QUOTAS[plan] || DEFAULT_QUOTAS.free;
   
   try {
     const prisma = getPrimary();
-    if (prisma) {
+    if (prisma && prisma.tenantQuota) {
       await prisma.tenantQuota.upsert({
         where: { tenantId },
         update: {

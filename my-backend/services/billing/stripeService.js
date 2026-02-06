@@ -443,7 +443,7 @@ async function updateTenantQuotas(tenantId, plan) {
   }
 
   // Update or create quota override
-  await prisma.tenantQuotaOverride.upsert({
+  await prisma.tenant_quota_overrides.upsert({
     where: { tenant_id: tenantId },
     create: {
       tenant_id: tenantId,

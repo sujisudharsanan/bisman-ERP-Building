@@ -360,20 +360,20 @@ async function updateStorageUsage(tenantId, bytes) {
     
     const date = new Date(getTodayDate());
     
-    await prisma.tenantUsage.upsert({
+    await prisma.tenant_usage.upsert({
       where: {
         tenant_usage_tenant_date_unique: {
-          tenantId,
+          tenant_id: tenantId,
           date,
         },
       },
       update: {
-        storageBytes: bytes,
+        storage_bytes: bytes,
       },
       create: {
-        tenantId,
+        tenant_id: tenantId,
         date,
-        storageBytes: bytes,
+        storage_bytes: bytes,
       },
     });
   } catch (error) {

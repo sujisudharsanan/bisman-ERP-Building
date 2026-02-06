@@ -72,20 +72,25 @@ async function checkQuotaUsage() {
 // Check Individual Tenant Quota
 // ============================================================================
 async function checkTenantQuota(tenant, today) {
-  // Get quota limits
-  const quota = await prisma.tenantQuota.findUnique({
-    where: { tenantId: tenant.id }
-  });
-
-  if (!quota) {
-    // Use default limits based on plan
-    const defaults = {
-      free: { apiCallsPerDay: 5000, storageBytesLimit: 1073741824, activeUsersLimit: 10 },
-      pro: { apiCallsPerDay: 50000, storageBytesLimit: 10737418240, activeUsersLimit: 25 },
-      enterprise: { apiCallsPerDay: 500000, storageBytesLimit: 107374182400, activeUsersLimit: 100 }
-    };
-    Object.assign(quota || {}, defaults[tenant.subscriptionPlan] || defaults.free);
+  // Get quota limits (tenantQuota model may not exist, use defaults based on plan)
+  let quota = null;
+  try {
+    if (prisma.tenantQuota) {
+      quota = await prisma.tenantQuota.findUnique({
+        where: { tenantId: tenant.id }
+      });
+    }
+  } catch {
+    // Table doesn't exist, use defaults
   }
+
+  // Use default limits based on plan if no quota found
+  const defaults = {
+    free: { apiCallsPerDay: 5000, storageBytesLimit: 1073741824, activeUsersLimit: 10 },
+    pro: { apiCallsPerDay: 50000, storageBytesLimit: 10737418240, activeUsersLimit: 25 },
+    enterprise: { apiCallsPerDay: 500000, storageBytesLimit: 107374182400, activeUsersLimit: 100 }
+  };
+  quota = quota || defaults[tenant.subscriptionPlan] || defaults.free;
 
   // Get today's usage
   const usage = await prisma.clientDailyUsage.findFirst({
