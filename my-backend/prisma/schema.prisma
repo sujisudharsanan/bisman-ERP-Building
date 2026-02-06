@@ -717,6 +717,178 @@ model billing_overrides {
   @@index([is_active, valid_until], map: "idx_billing_overrides_active")
 }
 
+/// Billing configuration and Stripe integration per client
+model billing_profiles {
+  id                      Int       @id @default(autoincrement())
+  client_id               String    @unique @db.Uuid
+  
+  // Plan & Status
+  plan                    String?   @default("free") @db.VarChar(50)
+  status                  String?   @default("active") @db.VarChar(50)
+  billing_cycle           String?   @default("monthly") @db.VarChar(20)
+  
+  // Trial Information
+  trial_start_date        DateTime? @db.Timestamptz(6)
+  trial_end_date          DateTime? @db.Timestamptz(6)
+  
+  // Billing Period
+  current_period_start    DateTime? @db.Timestamptz(6)
+  current_period_end      DateTime? @db.Timestamptz(6)
+  next_billing_date       DateTime? @db.Timestamptz(6)
+  cancel_at_period_end    Boolean   @default(false)
+  
+  // Contact Information
+  billing_name            String?   @db.VarChar(255)
+  billing_email           String?   @db.VarChar(255)
+  billing_address         Json?
+  tax_id                  String?   @db.VarChar(100)
+  tax_id_type             String?   @db.VarChar(50)
+  
+  // Stripe Integration
+  stripe_customer_id      String?   @db.VarChar(255)
+  stripe_subscription_id  String?   @db.VarChar(255)
+  payment_method_id       String?   @db.VarChar(255)
+  
+  // Card Details
+  card_brand              String?   @db.VarChar(50)
+  card_last4              String?   @db.VarChar(4)
+  card_exp_month          Int?
+  card_exp_year           Int?
+  
+  // Balance
+  balance                 Decimal   @default(0) @db.Decimal(12, 2)
+  credit_balance          Decimal   @default(0) @db.Decimal(12, 2)
+  
+  // Timestamps
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  clients                 clients   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  invoices                invoices[]
+  usage_records           usage_records[]
+
+  @@index([stripe_customer_id], map: "idx_billing_profiles_stripe_customer_id")
+}
+
+/// Invoice records for billing
+model invoices {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billing_profile_id    Int
+  
+  // Invoice Details
+  invoice_number        String    @db.VarChar(100)
+  status                String    @default("draft") @db.VarChar(50)
+  
+  // Dates
+  invoice_date          DateTime  @default(now()) @db.Timestamptz(6)
+  due_date              DateTime? @db.Timestamptz(6)
+  paid_at               DateTime? @db.Timestamptz(6)
+  period_start          DateTime? @db.Timestamptz(6)
+  period_end            DateTime? @db.Timestamptz(6)
+  
+  // Amounts
+  subtotal              Decimal   @default(0) @db.Decimal(12, 2)
+  tax                   Decimal   @default(0) @db.Decimal(12, 2)
+  discount              Decimal   @default(0) @db.Decimal(12, 2)
+  total                 Decimal   @default(0) @db.Decimal(12, 2)
+  amount_paid           Decimal   @default(0) @db.Decimal(12, 2)
+  amount_due            Decimal   @default(0) @db.Decimal(12, 2)
+  
+  // Content
+  line_items            Json      @default("[]")
+  description           String?
+  notes                 String?
+  
+  // Stripe Integration
+  stripe_invoice_id     String?   @db.VarChar(255)
+  stripe_pdf_url        String?
+  stripe_hosted_url     String?
+  
+  // Timestamps
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime  @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  billing_profile       billing_profiles @relation(fields: [billing_profile_id], references: [id], onDelete: Cascade)
+  payments              payments[]
+
+  @@index([billing_profile_id], map: "idx_invoices_billing_profile_id")
+  @@index([status], map: "idx_invoices_status")
+  @@index([invoice_date], map: "idx_invoices_invoice_date")
+  @@index([stripe_invoice_id], map: "idx_invoices_stripe_invoice_id")
+}
+
+/// Payment records for invoices
+model payments {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id              String    @db.Uuid
+  
+  // Payment Details
+  amount                  Decimal   @db.Decimal(12, 2)
+  status                  String    @default("pending") @db.VarChar(50)
+  
+  // Card Details
+  card_brand              String?   @db.VarChar(50)
+  card_last4              String?   @db.VarChar(4)
+  
+  // Failure Info
+  failure_code            String?   @db.VarChar(100)
+  failure_message         String?
+  
+  // Stripe Integration
+  stripe_payment_intent_id String?  @db.VarChar(255)
+  stripe_charge_id        String?   @db.VarChar(255)
+  
+  // Timestamps
+  paid_at                 DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  invoice                 invoices  @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@index([invoice_id], map: "idx_payments_invoice_id")
+  @@index([status], map: "idx_payments_status")
+}
+
+/// Usage-based billing records
+model usage_records {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billing_profile_id    Int
+  
+  // Usage Type
+  usage_type            String    @db.VarChar(100)
+  
+  // Period
+  period_start          DateTime  @db.Timestamptz(6)
+  period_end            DateTime  @db.Timestamptz(6)
+  
+  // Quantities
+  quantity              Decimal   @default(0) @db.Decimal(12, 2)
+  included_quantity     Decimal   @default(0) @db.Decimal(12, 2)
+  overage_quantity      Decimal   @default(0) @db.Decimal(12, 2)
+  
+  // Pricing
+  unit_price            Decimal   @default(0) @db.Decimal(12, 4)
+  overage_price         Decimal   @default(0) @db.Decimal(12, 4)
+  total_amount          Decimal   @default(0) @db.Decimal(12, 2)
+  
+  // Stripe Integration
+  stripe_usage_record_id String?  @db.VarChar(255)
+  
+  // Timestamps
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime  @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  billing_profile       billing_profiles @relation(fields: [billing_profile_id], references: [id], onDelete: Cascade)
+
+  @@index([billing_profile_id], map: "idx_usage_records_billing_profile_id")
+  @@index([usage_type], map: "idx_usage_records_usage_type")
+  @@index([period_start, period_end], map: "idx_usage_records_period")
+}
+
 model bills {
   id              String    @id
   filePath        String    @db.VarChar(500)
@@ -1401,6 +1573,7 @@ model clients {
   subscription_coupon_audit_logs    subscription_coupon_audit_logs[]
   subscription_coupons              subscription_coupons[]
   support_sessions                  support_sessions[]
+  billing_profile                   billing_profiles?
 
   @@index([client_code], map: "idx_clients_code")
   @@index([created_by], map: "idx_clients_created_by")

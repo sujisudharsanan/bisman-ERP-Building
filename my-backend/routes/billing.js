@@ -40,8 +40,8 @@ router.get('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    let billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    let billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     // Create billing profile if doesn't exist
@@ -55,13 +55,13 @@ router.get('/profile', async (req, res) => {
         return res.status(404).json({ error: 'Tenant not found' });
       }
 
-      billingProfile = await prisma.billingProfile.create({
+      billingProfile = await prisma.billing_profiles.create({
         data: {
-          clientId: tenantId,
+          client_id: tenantId,
           plan: client.subscriptionPlan || 'free',
-          trialStartDate: client.trial_start_date,
-          trialEndDate: client.trial_end_date,
-          billingName: client.name
+          trial_start_date: client.trial_start_date,
+          trial_end_date: client.trial_end_date,
+          billing_name: client.name
         }
       });
     }
@@ -81,39 +81,39 @@ router.get('/profile', async (req, res) => {
 router.put('/profile', async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { billingName, billingEmail, billingAddress, taxId, taxIdType } = req.body;
+    const { billing_name, billing_email, billing_address, tax_id, tax_idType } = req.body;
     
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.upsert({
-      where: { clientId: tenantId },
+    const billingProfile = await prisma.billing_profiles.upsert({
+      where: { client_id: tenantId },
       update: {
-        billingName: billingName ?? undefined,
-        billingEmail: billingEmail ?? undefined,
-        billingAddress: billingAddress ?? undefined,
-        taxId: taxId ?? undefined,
-        taxIdType: taxIdType ?? undefined,
+        billing_name: billing_name ?? undefined,
+        billing_email: billing_email ?? undefined,
+        billing_address: billing_address ?? undefined,
+        tax_id: tax_id ?? undefined,
+        tax_idType: tax_idType ?? undefined,
         updatedAt: new Date()
       },
       create: {
-        clientId: tenantId,
-        billingName,
-        billingEmail,
-        billingAddress,
-        taxId,
-        taxIdType
+        client_id: tenantId,
+        billing_name,
+        billing_email,
+        billing_address,
+        tax_id,
+        tax_idType
       }
     });
 
     // Sync with Stripe if enabled
-    if (stripeService.isStripeEnabled() && billingProfile.stripeCustomerId) {
-      await stripeService.updateCustomer(billingProfile.stripeCustomerId, {
-        name: billingName,
-        email: billingEmail,
-        address: billingAddress,
-        tax_id: taxId
+    if (stripeService.isStripeEnabled() && billingProfile.stripe_customer_id) {
+      await stripeService.updateCustomer(billingProfile.stripe_customer_id, {
+        name: billing_name,
+        email: billing_email,
+        address: billing_address,
+        tax_id: tax_id
       });
     }
 
@@ -163,8 +163,8 @@ router.get('/summary', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     const client = await prisma.clients.findUnique({
@@ -179,20 +179,20 @@ router.get('/summary', async (req, res) => {
     });
 
     // Get recent invoices
-    const recentInvoices = await prisma.invoice.findMany({
+    const recentInvoices = await prisma.invoices.findMany({
       where: { 
-        billingProfile: { clientId: tenantId }
+        billingProfile: { client_id: tenantId }
       },
-      orderBy: { invoiceDate: 'desc' },
+      orderBy: { invoice_date: 'desc' },
       take: 3
     });
 
     // Get usage for current period
-    const currentPeriodStart = billingProfile?.currentPeriodStart || new Date(new Date().setDate(1));
-    const usageRecords = await prisma.usageRecord.findMany({
+    const current_period_start = billingProfile?.current_period_start || new Date(new Date().setDate(1));
+    const usageRecords = await prisma.usage_records.findMany({
       where: {
-        billingProfile: { clientId: tenantId },
-        periodStart: { gte: currentPeriodStart }
+        billingProfile: { client_id: tenantId },
+        period_start: { gte: current_period_start }
       }
     });
 
@@ -215,35 +215,35 @@ router.get('/summary', async (req, res) => {
       subscription: {
         plan: billingProfile?.plan || client?.subscriptionPlan || 'free',
         status: billingProfile?.status || client?.subscriptionStatus || 'active',
-        billingCycle: billingProfile?.billingCycle || 'monthly',
-        currentPeriodStart: billingProfile?.currentPeriodStart,
-        currentPeriodEnd: billingProfile?.currentPeriodEnd,
-        nextBillingDate: billingProfile?.nextBillingDate,
-        cancelAtPeriodEnd: billingProfile?.cancelAtPeriodEnd || false
+        billing_cycle: billingProfile?.billing_cycle || 'monthly',
+        current_period_start: billingProfile?.current_period_start,
+        current_period_end: billingProfile?.current_period_end,
+        next_billing_date: billingProfile?.next_billing_date,
+        cancel_at_period_end: billingProfile?.cancel_at_period_end || false
       },
       trial: trialStatus,
       balance: {
         current: Number(billingProfile?.balance || 0),
-        credits: Number(billingProfile?.creditBalance || 0)
+        credits: Number(billingProfile?.credit_balance || 0)
       },
-      paymentMethod: billingProfile?.paymentMethodId ? {
-        cardBrand: billingProfile.cardBrand,
-        cardLast4: billingProfile.cardLast4,
-        cardExpMonth: billingProfile.cardExpMonth,
-        cardExpYear: billingProfile.cardExpYear
+      paymentMethod: billingProfile?.payment_method_id ? {
+        card_brand: billingProfile.card_brand,
+        card_last4: billingProfile.card_last4,
+        card_exp_month: billingProfile.card_exp_month,
+        card_exp_year: billingProfile.card_exp_year
       } : null,
       recentInvoices: recentInvoices.map(inv => ({
         id: inv.id,
-        number: inv.invoiceNumber,
-        date: inv.invoiceDate,
+        number: inv.invoice_number,
+        date: inv.invoice_date,
         total: Number(inv.total),
         status: inv.status
       })),
       usage: usageRecords.reduce((acc, record) => {
-        acc[record.usageType] = {
+        acc[record.usage_type] = {
           used: Number(record.quantity),
-          limit: Number(record.includedQuantity),
-          overage: Number(record.overageQuantity)
+          limit: Number(record.included_quantity),
+          overage: Number(record.overage_quantity)
         };
         return acc;
       }, {})
@@ -287,11 +287,11 @@ router.get('/payment-methods', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
-    if (!billingProfile?.stripeCustomerId) {
+    if (!billingProfile?.stripe_customer_id) {
       return res.json({ paymentMethods: [], defaultPaymentMethod: null });
     }
 
@@ -299,7 +299,7 @@ router.get('/payment-methods', async (req, res) => {
       return res.json({ paymentMethods: [], defaultPaymentMethod: null });
     }
 
-    const paymentMethods = await stripeService.getPaymentMethods(billingProfile.stripeCustomerId);
+    const paymentMethods = await stripeService.getPaymentMethods(billingProfile.stripe_customer_id);
     
     res.json({
       paymentMethods: paymentMethods.data.map(pm => ({
@@ -311,9 +311,9 @@ router.get('/payment-methods', async (req, res) => {
           expMonth: pm.card.exp_month,
           expYear: pm.card.exp_year
         } : null,
-        isDefault: pm.id === billingProfile.paymentMethodId
+        isDefault: pm.id === billingProfile.payment_method_id
       })),
-      defaultPaymentMethod: billingProfile.paymentMethodId
+      defaultPaymentMethod: billingProfile.payment_method_id
     });
   } catch (error) {
     console.error('[Billing] Get payment methods error:', error);
@@ -338,12 +338,12 @@ router.post('/payment-methods/setup', async (req, res) => {
       return res.status(503).json({ error: 'Billing not configured' });
     }
 
-    let billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    let billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     // Create Stripe customer if needed
-    if (!billingProfile?.stripeCustomerId) {
+    if (!billingProfile?.stripe_customer_id) {
       const client = await prisma.clients.findUnique({
         where: { id: tenantId }
       });
@@ -354,19 +354,19 @@ router.post('/payment-methods/setup', async (req, res) => {
         metadata: { tenantId }
       });
 
-      billingProfile = await prisma.billingProfile.upsert({
-        where: { clientId: tenantId },
-        update: { stripeCustomerId: customer.id },
+      billingProfile = await prisma.billing_profiles.upsert({
+        where: { client_id: tenantId },
+        update: { stripe_customer_id: customer.id },
         create: { 
-          clientId: tenantId,
-          stripeCustomerId: customer.id,
-          billingName: client.name,
-          billingEmail: req.user?.email
+          client_id: tenantId,
+          stripe_customer_id: customer.id,
+          billing_name: client.name,
+          billing_email: req.user?.email
         }
       });
     }
 
-    const setupIntent = await stripeService.createSetupIntent(billingProfile.stripeCustomerId);
+    const setupIntent = await stripeService.createSetupIntent(billingProfile.stripe_customer_id);
     
     res.json({
       clientSecret: setupIntent.client_secret
@@ -385,26 +385,26 @@ router.post('/payment-methods/setup', async (req, res) => {
 router.put('/payment-methods/default', async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { paymentMethodId } = req.body;
+    const { payment_method_id } = req.body;
     
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    if (!paymentMethodId) {
+    if (!payment_method_id) {
       return res.status(400).json({ error: 'Payment method ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
-    if (!billingProfile?.stripeCustomerId) {
+    if (!billingProfile?.stripe_customer_id) {
       return res.status(400).json({ error: 'No Stripe customer found' });
     }
 
     // Get payment method details from Stripe
-    const paymentMethod = await stripeService.getPaymentMethod(paymentMethodId);
+    const paymentMethod = await stripeService.getPaymentMethod(payment_method_id);
     
     if (!paymentMethod) {
       return res.status(404).json({ error: 'Payment method not found' });
@@ -412,19 +412,19 @@ router.put('/payment-methods/default', async (req, res) => {
 
     // Update default in Stripe
     await stripeService.updateCustomerDefaultPaymentMethod(
-      billingProfile.stripeCustomerId, 
-      paymentMethodId
+      billingProfile.stripe_customer_id, 
+      payment_method_id
     );
 
     // Update billing profile
-    await prisma.billingProfile.update({
+    await prisma.billing_profiles.update({
       where: { id: billingProfile.id },
       data: {
-        paymentMethodId,
-        cardBrand: paymentMethod.card?.brand,
-        cardLast4: paymentMethod.card?.last4,
-        cardExpMonth: paymentMethod.card?.exp_month,
-        cardExpYear: paymentMethod.card?.exp_year,
+        payment_method_id,
+        card_brand: paymentMethod.card?.brand,
+        card_last4: paymentMethod.card?.last4,
+        card_exp_month: paymentMethod.card?.exp_month,
+        card_exp_year: paymentMethod.card?.exp_year,
         updatedAt: new Date()
       }
     });
@@ -444,24 +444,24 @@ router.put('/payment-methods/default', async (req, res) => {
 router.delete('/payment-methods/:id', async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { id: paymentMethodId } = req.params;
+    const { id: payment_method_id } = req.params;
     
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     // Cannot delete default payment method if it's the only one
-    if (billingProfile?.paymentMethodId === paymentMethodId) {
+    if (billingProfile?.payment_method_id === payment_method_id) {
       return res.status(400).json({ 
         error: 'Cannot delete default payment method. Set a different default first.' 
       });
     }
 
-    await stripeService.detachPaymentMethod(paymentMethodId);
+    await stripeService.detachPaymentMethod(payment_method_id);
     
     res.json({ success: true });
   } catch (error) {
@@ -488,8 +488,8 @@ router.get('/invoices', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     if (!billingProfile) {
@@ -498,7 +498,7 @@ router.get('/invoices', async (req, res) => {
 
     // Build filter
     const where = {
-      billingProfileId: billingProfile.id
+      billing_profile_id: billingProfile.id
     };
 
     if (status && status !== 'all') {
@@ -506,54 +506,54 @@ router.get('/invoices', async (req, res) => {
     }
 
     if (startDate) {
-      where.invoiceDate = { gte: new Date(startDate) };
+      where.invoice_date = { gte: new Date(startDate) };
     }
 
     if (endDate) {
-      where.invoiceDate = { 
-        ...where.invoiceDate,
+      where.invoice_date = { 
+        ...where.invoice_date,
         lte: new Date(endDate) 
       };
     }
 
     const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
+      prisma.invoices.findMany({
         where,
-        orderBy: { invoiceDate: 'desc' },
+        orderBy: { invoice_date: 'desc' },
         take: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
         include: {
           payments: true
         }
       }),
-      prisma.invoice.count({ where })
+      prisma.invoices.count({ where })
     ]);
 
     res.json({
       invoices: invoices.map(inv => ({
         id: inv.id,
-        number: inv.invoiceNumber,
+        number: inv.invoice_number,
         status: inv.status,
-        date: inv.invoiceDate,
-        dueDate: inv.dueDate,
-        periodStart: inv.periodStart,
-        periodEnd: inv.periodEnd,
+        date: inv.invoice_date,
+        due_date: inv.due_date,
+        period_start: inv.period_start,
+        period_end: inv.period_end,
         subtotal: Number(inv.subtotal),
         tax: Number(inv.tax),
         discount: Number(inv.discount),
         total: Number(inv.total),
-        amountPaid: Number(inv.amountPaid),
-        amountDue: Number(inv.amountDue),
-        lineItems: inv.lineItems,
-        pdfUrl: inv.stripePdfUrl,
-        hostedUrl: inv.stripeHostedUrl,
+        amount_paid: Number(inv.amount_paid),
+        amount_due: Number(inv.amount_due),
+        line_items: inv.line_items,
+        pdfUrl: inv.stripe_pdf_url,
+        hostedUrl: inv.stripe_hosted_url,
         payments: inv.payments.map(p => ({
           id: p.id,
           amount: Number(p.amount),
           status: p.status,
-          paidAt: p.paidAt,
-          cardLast4: p.cardLast4,
-          cardBrand: p.cardBrand
+          paid_at: p.paid_at,
+          card_last4: p.card_last4,
+          card_brand: p.card_brand
         }))
       })),
       total,
@@ -579,10 +579,10 @@ router.get('/invoices/:id', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.invoices.findFirst({
       where: {
         id,
-        billingProfile: { clientId: tenantId }
+        billingProfile: { client_id: tenantId }
       },
       include: {
         payments: true
@@ -596,30 +596,30 @@ router.get('/invoices/:id', async (req, res) => {
     res.json({
       invoice: {
         id: invoice.id,
-        number: invoice.invoiceNumber,
+        number: invoice.invoice_number,
         status: invoice.status,
-        date: invoice.invoiceDate,
-        dueDate: invoice.dueDate,
-        periodStart: invoice.periodStart,
-        periodEnd: invoice.periodEnd,
+        date: invoice.invoice_date,
+        due_date: invoice.due_date,
+        period_start: invoice.period_start,
+        period_end: invoice.period_end,
         subtotal: Number(invoice.subtotal),
         tax: Number(invoice.tax),
         discount: Number(invoice.discount),
         total: Number(invoice.total),
-        amountPaid: Number(invoice.amountPaid),
-        amountDue: Number(invoice.amountDue),
-        lineItems: invoice.lineItems,
+        amount_paid: Number(invoice.amount_paid),
+        amount_due: Number(invoice.amount_due),
+        line_items: invoice.line_items,
         description: invoice.description,
         notes: invoice.notes,
-        pdfUrl: invoice.stripePdfUrl,
-        hostedUrl: invoice.stripeHostedUrl,
+        pdfUrl: invoice.stripe_pdf_url,
+        hostedUrl: invoice.stripe_hosted_url,
         payments: invoice.payments.map(p => ({
           id: p.id,
           amount: Number(p.amount),
           status: p.status,
-          paidAt: p.paidAt,
-          cardLast4: p.cardLast4,
-          cardBrand: p.cardBrand,
+          paid_at: p.paid_at,
+          card_last4: p.card_last4,
+          card_brand: p.card_brand,
           failureCode: p.failureCode,
           failureMessage: p.failureMessage
         }))
@@ -645,10 +645,10 @@ router.get('/invoices/:id/pdf', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.invoices.findFirst({
       where: {
         id,
-        billingProfile: { clientId: tenantId }
+        billingProfile: { client_id: tenantId }
       }
     });
 
@@ -656,12 +656,12 @@ router.get('/invoices/:id/pdf', async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    if (!invoice.stripePdfUrl) {
+    if (!invoice.stripe_pdf_url) {
       return res.status(404).json({ error: 'PDF not available' });
     }
 
     // Redirect to Stripe PDF URL
-    res.redirect(invoice.stripePdfUrl);
+    res.redirect(invoice.stripe_pdf_url);
   } catch (error) {
     console.error('[Billing] Get invoice PDF error:', error);
     res.status(500).json({ error: 'Failed to get invoice PDF' });
@@ -682,10 +682,10 @@ router.post('/invoices/:id/pay', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.invoices.findFirst({
       where: {
         id,
-        billingProfile: { clientId: tenantId }
+        billingProfile: { client_id: tenantId }
       },
       include: {
         billingProfile: true
@@ -700,21 +700,21 @@ router.post('/invoices/:id/pay', async (req, res) => {
       return res.status(400).json({ error: 'Invoice already paid' });
     }
 
-    if (!invoice.stripeInvoiceId) {
+    if (!invoice.stripe_invoice_id) {
       return res.status(400).json({ error: 'Invoice cannot be paid online' });
     }
 
     // Pay via Stripe
-    const paidInvoice = await stripeService.payInvoice(invoice.stripeInvoiceId);
+    const paidInvoice = await stripeService.payInvoice(invoice.stripe_invoice_id);
 
     // Update local invoice
-    await prisma.invoice.update({
+    await prisma.invoices.update({
       where: { id },
       data: {
         status: 'paid',
-        paidAt: new Date(),
-        amountPaid: invoice.total,
-        amountDue: 0
+        paid_at: new Date(),
+        amount_paid: invoice.total,
+        amount_due: 0
       }
     });
 
@@ -765,24 +765,24 @@ router.get('/usage', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
-    const periodStart = startDate 
+    const period_start = startDate 
       ? new Date(startDate) 
-      : (billingProfile?.currentPeriodStart || new Date(new Date().setDate(1)));
+      : (billingProfile?.current_period_start || new Date(new Date().setDate(1)));
     
-    const periodEnd = endDate 
+    const period_end = endDate 
       ? new Date(endDate) 
-      : (billingProfile?.currentPeriodEnd || new Date());
+      : (billingProfile?.current_period_end || new Date());
 
     // Get aggregated usage
-    const usageRecords = await prisma.usageRecord.findMany({
+    const usageRecords = await prisma.usage_records.findMany({
       where: {
-        billingProfile: { clientId: tenantId },
-        periodStart: { gte: periodStart },
-        periodEnd: { lte: periodEnd }
+        billingProfile: { client_id: tenantId },
+        period_start: { gte: period_start },
+        period_end: { lte: period_end }
       }
     });
 
@@ -791,8 +791,8 @@ router.get('/usage', async (req, res) => {
       where: {
         client_id: tenantId,
         usage_date: {
-          gte: periodStart,
-          lte: periodEnd
+          gte: period_start,
+          lte: period_end
         }
       },
       orderBy: { usage_date: 'asc' }
@@ -800,17 +800,17 @@ router.get('/usage', async (req, res) => {
 
     res.json({
       period: {
-        start: periodStart,
-        end: periodEnd
+        start: period_start,
+        end: period_end
       },
       summary: usageRecords.reduce((acc, record) => {
-        acc[record.usageType] = {
+        acc[record.usage_type] = {
           used: Number(record.quantity),
-          included: Number(record.includedQuantity),
-          overage: Number(record.overageQuantity),
-          unitPrice: Number(record.unitPrice),
-          overagePrice: Number(record.overagePrice),
-          totalAmount: Number(record.totalAmount)
+          included: Number(record.included_quantity),
+          overage: Number(record.overage_quantity),
+          unit_price: Number(record.unit_price),
+          overage_price: Number(record.overage_price),
+          total_amount: Number(record.total_amount)
         };
         return acc;
       }, {}),
@@ -824,8 +824,8 @@ router.get('/usage', async (req, res) => {
         deleteCount: d.delete_count || 0
       })),
       overageCharges: usageRecords
-        .filter(r => Number(r.overageQuantity) > 0)
-        .reduce((sum, r) => sum + Number(r.totalAmount), 0)
+        .filter(r => Number(r.overage_quantity) > 0)
+        .reduce((sum, r) => sum + Number(r.total_amount), 0)
     });
   } catch (error) {
     console.error('[Billing] Get usage error:', error);
@@ -860,8 +860,8 @@ router.get('/trial', async (req, res) => {
       }
     });
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
     if (!client) {
@@ -976,10 +976,10 @@ router.post('/cancel', async (req, res) => {
     });
 
     // Update billing profile
-    await prisma.billingProfile.update({
-      where: { clientId: tenantId },
+    await prisma.billing_profiles.update({
+      where: { client_id: tenantId },
       data: {
-        cancelAtPeriodEnd: !immediately,
+        cancel_at_period_end: !immediately,
         canceledAt: immediately ? new Date() : null,
         status: immediately ? 'canceled' : 'active'
       }
@@ -988,7 +988,7 @@ router.post('/cancel', async (req, res) => {
     res.json({
       success: true,
       status: subscription.status,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end
+      cancel_at_period_end: subscription.cancel_at_period_end
     });
 
   } catch (error) {
@@ -1018,11 +1018,11 @@ router.post('/change-plan', async (req, res) => {
     const subscription = await stripeService.changePlan(tenantId, plan);
 
     // Update billing profile
-    await prisma.billingProfile.update({
-      where: { clientId: tenantId },
+    await prisma.billing_profiles.update({
+      where: { client_id: tenantId },
       data: {
         plan,
-        cancelAtPeriodEnd: false,
+        cancel_at_period_end: false,
         canceledAt: null
       }
     });
@@ -1052,23 +1052,23 @@ router.post('/reactivate', async (req, res) => {
       return res.status(503).json({ error: 'Billing not configured' });
     }
 
-    const billingProfile = await prisma.billingProfile.findUnique({
-      where: { clientId: tenantId }
+    const billingProfile = await prisma.billing_profiles.findUnique({
+      where: { client_id: tenantId }
     });
 
-    if (!billingProfile?.stripeSubscriptionId) {
+    if (!billingProfile?.stripe_subscription_id) {
       return res.status(400).json({ error: 'No active subscription to reactivate' });
     }
 
     const subscription = await stripeService.reactivateSubscription(
-      billingProfile.stripeSubscriptionId
+      billingProfile.stripe_subscription_id
     );
 
     // Update billing profile
-    await prisma.billingProfile.update({
+    await prisma.billing_profiles.update({
       where: { id: billingProfile.id },
       data: {
-        cancelAtPeriodEnd: false,
+        cancel_at_period_end: false,
         canceledAt: null,
         status: 'active'
       }
