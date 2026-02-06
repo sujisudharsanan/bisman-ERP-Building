@@ -36,7 +36,7 @@ router.post('/start', authenticate, async (req, res) => {
       let useDB = canUseDB()
       if (useDB) {
         try {
-          member = await prisma.threadMember.findUnique({ where: { threadId_userId: { threadId: thread_id, userId: req.user.id } } })
+          member = await prisma.thread_members.findUnique({ where: { threadId_userId: { threadId: thread_id, userId: req.user.id } } })
           if (!member) return res.status(403).json({ error: 'not a thread member' })
           // Optional role gating: restrict who can START a call (initiators)
           const roleNorm = String(member.role || '').toLowerCase()
@@ -132,7 +132,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
     let member = { role: 'member' }
     if (useDB) {
       try {
-        member = await prisma.threadMember.findUnique({ where: { threadId_userId: { threadId: call.thread_id, userId: req.user.id } } })
+        member = await prisma.thread_members.findUnique({ where: { threadId_userId: { threadId: call.thread_id, userId: req.user.id } } })
         if (!member) return res.status(403).json({ error: 'not_a_thread_member' })
         // Optional role gating for JOIN (allow all roles except maybe banned)
         const roleNorm = String(member.role || '').toLowerCase()

@@ -33,7 +33,7 @@ async function markSeen(prisma, userId) {
   if (!prisma?.threadMember?.updateMany) return;
   const now = new Date();
   try {
-    await prisma.threadMember.updateMany({
+    await prisma.thread_members.updateMany({
       where: { userId: Number(userId) },
       data: { last_seen_at: now }
     });

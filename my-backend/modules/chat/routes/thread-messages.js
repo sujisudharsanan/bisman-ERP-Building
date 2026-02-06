@@ -47,7 +47,7 @@ router.get('/threads', async (req, res) => {
         ]
       },
       include: {
-        thread_thread_members: {
+        thread_members: {
           select: {
             id: true,
             userId: true,
@@ -55,7 +55,7 @@ router.get('/threads', async (req, res) => {
             isActive: true
           }
         },
-        thread_thread_messages: {
+        thread_messages: {
           take: 1,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -74,7 +74,7 @@ router.get('/threads', async (req, res) => {
       let unreadCount = 0;
       try {
         // Find the user's last sent message in this thread
-        const lastUserMessage = await prisma.threadMessage.findFirst({
+        const lastUserMessage = await prisma.thread_messages.findFirst({
           where: {
             threadId: thread.id,
             senderId: userId
@@ -84,7 +84,7 @@ router.get('/threads', async (req, res) => {
         });
         
         // Count messages from others after the user's last message
-        unreadCount = await prisma.threadMessage.count({
+        unreadCount = await prisma.thread_messages.count({
           where: {
             threadId: thread.id,
             senderId: { not: userId },
@@ -107,7 +107,7 @@ router.get('/threads', async (req, res) => {
           role: m.role,
           isActive: m.isActive
         })),
-        lastMessage: thread.messages[0] || null,
+        lastMessage: thread.thread_messages[0] || null,
         unreadCount
       };
     }));
@@ -353,7 +353,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
     }
 
     // Add new members
-    await prisma.threadMember.createMany({
+    await prisma.thread_members.createMany({
       data: memberIds.map(id => ({ threadId, userId: id })),
       skipDuplicates: true
     });
@@ -406,7 +406,7 @@ router.delete('/threads/:threadId/members/:memberId', async (req, res) => {
       });
     }
 
-    await prisma.threadMember.deleteMany({
+    await prisma.thread_members.deleteMany({
       where: { threadId, userId: parseInt(memberId) }
     });
 
@@ -492,7 +492,7 @@ router.post('/threads/:threadId/messages', async (req, res) => {
       // ALSO emit to individual user rooms for ALL thread members
       // This ensures users receive messages even if they haven't joined the thread room yet
       try {
-        const threadMembers = await prisma.threadMember.findMany({
+        const threadMembers = await prisma.thread_members.findMany({
           where: { threadId },
           select: { userId: true }
         });
@@ -509,7 +509,7 @@ router.post('/threads/:threadId/messages', async (req, res) => {
                   threadId,
                   senderId: { not: member.userId },
                   createdAt: {
-                    gt: (await prisma.threadMember.findUnique({
+                    gt: (await prisma.thread_members.findUnique({
                       where: {
                         threadId_userId: { threadId, userId: member.userId }
                       },
@@ -837,7 +837,7 @@ router.get('/sync', async (req, res) => {
 
     // If since_id provided, get the timestamp of that message first
     if (since_id) {
-      const sinceMessage = await prisma.threadMessage.findUnique({
+      const sinceMessage = await prisma.thread_messages.findUnique({
         where: { id: since_id },
         select: { createdAt: true }
       });
@@ -856,7 +856,7 @@ router.get('/sync', async (req, res) => {
     // Fetch new messages
     // Note: ThreadMessage.senderId is Int, no direct relation to User (UUID id)
     // Sender info must be fetched separately or cached
-    const newMessages = await prisma.threadMessage.findMany({
+    const newMessages = await prisma.thread_messages.findMany({
       where: messagesWhere,
       include: {
         replyTo: {
@@ -908,14 +908,14 @@ router.get('/sync', async (req, res) => {
         // Calculate unread count for this user
         let unreadCount = 0;
         try {
-          const memberRecord = await prisma.threadMember.findUnique({
+          const memberRecord = await prisma.thread_members.findUnique({
             where: {
               threadId_userId: { threadId, userId: userId }
             },
             select: { lastReadAt: true }
           });
 
-          unreadCount = await prisma.threadMessage.count({
+          unreadCount = await prisma.thread_messages.count({
             where: {
               threadId,
               senderId: { not: userId },
@@ -1013,7 +1013,7 @@ router.get('/sync/initial', async (req, res) => {
     // For each thread, get recent messages and unread count
     const threadsWithMessages = await Promise.all(
       threads.map(async (thread) => {
-        const messages = await prisma.threadMessage.findMany({
+        const messages = await prisma.thread_messages.findMany({
           where: {
             threadId: thread.id,
             isDeleted: false
@@ -1034,14 +1034,14 @@ router.get('/sync/initial', async (req, res) => {
         // Calculate unread count
         let unreadCount = 0;
         try {
-          const memberRecord = await prisma.threadMember.findUnique({
+          const memberRecord = await prisma.thread_members.findUnique({
             where: {
               threadId_userId: { threadId: thread.id, userId }
             },
             select: { lastReadAt: true }
           });
 
-          unreadCount = await prisma.threadMessage.count({
+          unreadCount = await prisma.thread_messages.count({
             where: {
               threadId: thread.id,
               senderId: { not: userId },

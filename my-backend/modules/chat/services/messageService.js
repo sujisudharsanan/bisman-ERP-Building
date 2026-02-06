@@ -22,7 +22,7 @@ async function getThreadMessages(threadId, options = {}) {
   };
 
   const [messages, total] = await Promise.all([
-    prisma.threadMessage.findMany({
+    prisma.thread_messages.findMany({
       where,
       include: {
         sender: {
@@ -53,7 +53,7 @@ async function getThreadMessages(threadId, options = {}) {
       take: limit,
       skip: offset
     }),
-    prisma.threadMessage.count({ where })
+    prisma.thread_messages.count({ where })
   ]);
 
   return {
@@ -76,7 +76,7 @@ async function createMessage(data) {
     replyToId = null
   } = data;
 
-  const message = await prisma.threadMessage.create({
+  const message = await prisma.thread_messages.create({
     data: {
       threadId,
       senderId,
@@ -111,7 +111,7 @@ async function createMessage(data) {
   });
 
   // Update thread's updatedAt timestamp
-  await prisma.thread.update({
+  await prisma.threads.update({
     where: { id: threadId },
     data: { updatedAt: new Date() }
   });
@@ -124,7 +124,7 @@ async function createMessage(data) {
  */
 async function editMessage(messageId, userId, newContent) {
   // Verify ownership
-  const message = await prisma.threadMessage.findUnique({
+  const message = await prisma.thread_messages.findUnique({
     where: { id: messageId }
   });
 
@@ -140,7 +140,7 @@ async function editMessage(messageId, userId, newContent) {
     throw new Error('Cannot edit deleted message');
   }
 
-  return await prisma.threadMessage.update({
+  return await prisma.thread_messages.update({
     where: { id: messageId },
     data: {
       content: newContent,
@@ -166,7 +166,7 @@ async function editMessage(messageId, userId, newContent) {
  */
 async function deleteMessage(messageId, userId) {
   // Verify ownership
-  const message = await prisma.threadMessage.findUnique({
+  const message = await prisma.thread_messages.findUnique({
     where: { id: messageId }
   });
 
@@ -178,7 +178,7 @@ async function deleteMessage(messageId, userId) {
     throw new Error('Unauthorized: You can only delete your own messages');
   }
 
-  return await prisma.threadMessage.update({
+  return await prisma.thread_messages.update({
     where: { id: messageId },
     data: {
       isDeleted: true,
@@ -192,7 +192,7 @@ async function deleteMessage(messageId, userId) {
  * Add a reaction to a message
  */
 async function addReaction(messageId, userId, emoji) {
-  const message = await prisma.threadMessage.findUnique({
+  const message = await prisma.thread_messages.findUnique({
     where: { id: messageId }
   });
 
@@ -217,7 +217,7 @@ async function addReaction(messageId, userId, emoji) {
     createdAt: new Date().toISOString()
   });
 
-  return await prisma.threadMessage.update({
+  return await prisma.thread_messages.update({
     where: { id: messageId },
     data: {
       reactions,
@@ -230,7 +230,7 @@ async function addReaction(messageId, userId, emoji) {
  * Remove a reaction from a message
  */
 async function removeReaction(messageId, userId, emoji) {
-  const message = await prisma.threadMessage.findUnique({
+  const message = await prisma.thread_messages.findUnique({
     where: { id: messageId }
   });
 
@@ -243,7 +243,7 @@ async function removeReaction(messageId, userId, emoji) {
     r => !(r.userId === userId && r.emoji === emoji)
   );
 
-  return await prisma.threadMessage.update({
+  return await prisma.thread_messages.update({
     where: { id: messageId },
     data: {
       reactions: updatedReactions,
@@ -256,7 +256,7 @@ async function removeReaction(messageId, userId, emoji) {
  * Mark messages as read by a user
  */
 async function markAsRead(messageIds, userId) {
-  const messages = await prisma.threadMessage.findMany({
+  const messages = await prisma.thread_messages.findMany({
     where: {
       id: { in: messageIds }
     }
@@ -276,7 +276,7 @@ async function markAsRead(messageIds, userId) {
       readAt: new Date().toISOString()
     });
 
-    return prisma.threadMessage.update({
+    return prisma.thread_messages.update({
       where: { id: message.id },
       data: {
         readBy,
@@ -309,7 +309,7 @@ async function searchMessages(query, options = {}) {
     ...(userId && { senderId: userId })
   };
 
-  const messages = await prisma.threadMessage.findMany({
+  const messages = await prisma.thread_messages.findMany({
     where,
     include: {
       sender: {
