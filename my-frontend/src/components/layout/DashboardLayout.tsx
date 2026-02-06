@@ -50,11 +50,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
     <ErrorBoundary>
       <div
         className="min-h-screen flex flex-col theme-transition"
-        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem' }}
+        style={{ ['--sidebar-width' as string]: sidebarOpen ? '13rem' : '3.5rem' }}
       >
         {/* Top Navbar - Fixed at top */}
         <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
-          <TopNavbar showThemeToggle />
+          <TopNavbar showThemeToggle onMenuToggle={toggleSidebar} />
         </ErrorBoundary>
 
   {/* Content Area with Sidebar - Add top padding for fixed navbar (global var) */}
@@ -64,9 +64,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
 
-          {/* Main Content - Sidebar is sticky on md+ (in flex flow), fixed on mobile (needs margin) */}
+          {/* Main Content - Sidebar is sticky on md+ (in flex flow), fixed on mobile (overlay, no margin needed) */}
           <main 
-            className={`flex-1 overflow-auto transition-all duration-300 ${sidebarOpen ? 'ml-52 md:ml-0' : 'ml-16 md:ml-0'}`}
+            className="flex-1 overflow-auto transition-all duration-300"
           >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">

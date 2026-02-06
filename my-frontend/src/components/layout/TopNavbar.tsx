@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Calendar, Bell, User, Settings, ChevronDown } from 'lucide-react';
+import { Calendar, Bell, User, Settings, ChevronDown, Menu } from 'lucide-react';
 
 // Dynamic imports to prevent SSR issues with theme/auth hooks
 const DarkModeToggle = dynamic(() => import('../ui/DarkModeToggle'), { ssr: false });
@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface TopNavbarProps {
   showThemeToggle?: boolean;
   fixed?: boolean;
+  onMenuToggle?: () => void;
 }
 
 /**
@@ -131,7 +132,7 @@ const UserProfileDropdown: React.FC = () => {
   );
 };
 
-const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = true }) => {
+const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = true, onMenuToggle }) => {
   const [currentPageName, setCurrentPageName] = useState<string>('Dashboard');
 
   // Get current page name from URL
@@ -166,8 +167,19 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
     style={{ height: 'var(--navbar-height)' }}
     data-component="top-navbar"
   >
-      {/* Left side - Logo and Title only */}
-      <div className="flex items-center gap-3">
+      {/* Left side - Menu toggle and Logo */}
+      <div className="flex items-center gap-2">
+        {/* Hamburger Menu - Only visible on mobile (< lg) */}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Toggle sidebar menu"
+          >
+            <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        )}
+        
         {/* Logo and Title */}
         <div className="flex items-center gap-2">
           <HeaderLogo />

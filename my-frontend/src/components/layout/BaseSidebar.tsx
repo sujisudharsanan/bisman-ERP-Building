@@ -76,7 +76,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 			{/* Sidebar */}
 			<aside
 				className={`
-					fixed md:sticky left-0 z-40
+					fixed lg:sticky left-0 z-40
 					bg-white dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-800
 					transition-[width,transform] duration-200 ease-out will-change-[width,transform]
 					${collapsed && !isMobile ? 'w-14 min-w-[3.5rem]' : 'w-52 min-w-[13rem]'}
