@@ -1,0 +1,517 @@
+┌─────────┬─────────────────────────────────────┬────────────────────────────┬─────────────────────┐
+│ (index) │ table_name                          │ column_name                │ data_type           │
+├─────────┼─────────────────────────────────────┼────────────────────────────┼─────────────────────┤
+│ 0       │ '_legacy_users_backup_20260106'     │ 'id'                       │ 'integer'           │
+│ 1       │ '_legacy_users_backup_20260106'     │ 'super_admin_id'           │ 'integer'           │
+│ 2       │ 'access_requests'                   │ 'id'                       │ 'integer'           │
+│ 3       │ 'admin_access_notifications'        │ 'access_request_id'        │ 'integer'           │
+│ 4       │ 'admin_access_notifications'        │ 'id'                       │ 'integer'           │
+│ 5       │ 'admin_access_notifications'        │ 'suggested_plan_id'        │ 'integer'           │
+│ 6       │ 'admin_page_assignments'            │ 'assignee_id'              │ 'integer'           │
+│ 7       │ 'admin_page_assignments'            │ 'assigner_id'              │ 'integer'           │
+│ 8       │ 'admin_page_assignments'            │ 'id'                       │ 'integer'           │
+│ 9       │ 'admin_page_assignments'            │ 'page_id'                  │ 'integer'           │
+│ 10      │ 'admin_role_assignments'            │ 'assignee_id'              │ 'integer'           │
+│ 11      │ 'admin_role_assignments'            │ 'assigner_id'              │ 'integer'           │
+│ 12      │ 'admin_role_assignments'            │ 'id'                       │ 'integer'           │
+│ 13      │ 'admin_role_assignments'            │ 'role_id'                  │ 'integer'           │
+│ 14      │ 'admin_role_grants'                 │ 'assignee_id'              │ 'integer'           │
+│ 15      │ 'admin_role_grants'                 │ 'assigner_id'              │ 'integer'           │
+│ 16      │ 'admin_role_grants'                 │ 'id'                       │ 'integer'           │
+│ 17      │ 'admin_role_grants'                 │ 'role_id'                  │ 'integer'           │
+│ 18      │ 'ai_usage_logs'                     │ 'id'                       │ 'integer'           │
+│ 19      │ 'ai_usage_logs'                     │ 'user_id'                  │ 'text'              │
+│ 20      │ 'api_keys'                          │ 'client_id'                │ 'integer'           │
+│ 21      │ 'api_keys'                          │ 'id'                       │ 'integer'           │
+│ 22      │ 'approval_levels'                   │ 'id'                       │ 'integer'           │
+│ 23      │ 'approvals'                         │ 'id'                       │ 'text'              │
+│ 24      │ 'approver_configurations'           │ 'id'                       │ 'text'              │
+│ 25      │ 'approver_selection_logs'           │ 'id'                       │ 'text'              │
+│ 26      │ 'asset_assignments'                 │ 'assigned_to_user_id'      │ 'text'              │
+│ 27      │ 'asset_categories'                  │ 'id'                       │ 'integer'           │
+│ 28      │ 'asset_categories'                  │ 'parent_id'                │ 'integer'           │
+│ 29      │ 'assets'                            │ 'assigned_to_user_id'      │ 'text'              │
+│ 30      │ 'assets'                            │ 'category_id'              │ 'integer'           │
+│ 31      │ 'assets'                            │ 'location_id'              │ 'integer'           │
+│ 32      │ 'assets'                            │ 'vendor_id'                │ 'integer'           │
+│ 33      │ 'assistant_memory'                  │ 'id'                       │ 'text'              │
+│ 34      │ 'audit_logs'                        │ 'id'                       │ 'integer'           │
+│ 35      │ 'audit_logs'                        │ 'record_id'                │ 'integer'           │
+│ 36      │ 'audit_logs'                        │ 'session_id'               │ 'integer'           │
+│ 37      │ 'audit_logs'                        │ 'super_admin_id'           │ 'integer'           │
+│ 38      │ 'audit_logs'                        │ 'user_id'                  │ 'text'              │
+│ 39      │ 'audit_logs_dml'                    │ 'business_id'              │ 'integer'           │
+│ 40      │ 'audit_logs_dml'                    │ 'client_id'                │ 'integer'           │
+│ 41      │ 'audit_logs_dml'                    │ 'id'                       │ 'bigint'            │
+│ 42      │ 'audit_logs_p2025_12'               │ 'id'                       │ 'integer'           │
+│ 43      │ 'audit_logs_p2025_12'               │ 'record_id'                │ 'integer'           │
+│ 44      │ 'audit_logs_p2025_12'               │ 'session_id'               │ 'integer'           │
+│ 45      │ 'audit_logs_p2025_12'               │ 'super_admin_id'           │ 'integer'           │
+│ 46      │ 'audit_logs_p2025_12'               │ 'user_id'                  │ 'text'              │
+│ 47      │ 'audit_logs_p2026_01'               │ 'id'                       │ 'integer'           │
+│ 48      │ 'audit_logs_p2026_01'               │ 'record_id'                │ 'integer'           │
+│ 49      │ 'audit_logs_p2026_01'               │ 'session_id'               │ 'integer'           │
+│ 50      │ 'audit_logs_p2026_01'               │ 'super_admin_id'           │ 'integer'           │
+│ 51      │ 'audit_logs_p2026_01'               │ 'user_id'                  │ 'text'              │
+│ 52      │ 'audit_logs_p2026_02'               │ 'id'                       │ 'integer'           │
+│ 53      │ 'audit_logs_p2026_02'               │ 'record_id'                │ 'integer'           │
+│ 54      │ 'audit_logs_p2026_02'               │ 'session_id'               │ 'integer'           │
+│ 55      │ 'audit_logs_p2026_02'               │ 'super_admin_id'           │ 'integer'           │
+│ 56      │ 'audit_logs_p2026_02'               │ 'user_id'                  │ 'text'              │
+│ 57      │ 'audit_logs_p2026_03'               │ 'id'                       │ 'integer'           │
+│ 58      │ 'audit_logs_p2026_03'               │ 'record_id'                │ 'integer'           │
+│ 59      │ 'audit_logs_p2026_03'               │ 'session_id'               │ 'integer'           │
+│ 60      │ 'audit_logs_p2026_03'               │ 'super_admin_id'           │ 'integer'           │
+│ 61      │ 'audit_logs_p2026_03'               │ 'user_id'                  │ 'text'              │
+│ 62      │ 'audit_logs_p2026_04'               │ 'id'                       │ 'integer'           │
+│ 63      │ 'audit_logs_p2026_04'               │ 'record_id'                │ 'integer'           │
+│ 64      │ 'audit_logs_p2026_04'               │ 'session_id'               │ 'integer'           │
+│ 65      │ 'audit_logs_p2026_04'               │ 'super_admin_id'           │ 'integer'           │
+│ 66      │ 'audit_logs_p2026_04'               │ 'user_id'                  │ 'text'              │
+│ 67      │ 'audit_logs_p2026_05'               │ 'id'                       │ 'integer'           │
+│ 68      │ 'audit_logs_p2026_05'               │ 'record_id'                │ 'integer'           │
+│ 69      │ 'audit_logs_p2026_05'               │ 'session_id'               │ 'integer'           │
+│ 70      │ 'audit_logs_p2026_05'               │ 'super_admin_id'           │ 'integer'           │
+│ 71      │ 'audit_logs_p2026_05'               │ 'user_id'                  │ 'text'              │
+│ 72      │ 'audit_logs_p_default'              │ 'id'                       │ 'integer'           │
+│ 73      │ 'audit_logs_p_default'              │ 'record_id'                │ 'integer'           │
+│ 74      │ 'audit_logs_p_default'              │ 'session_id'               │ 'integer'           │
+│ 75      │ 'audit_logs_p_default'              │ 'super_admin_id'           │ 'integer'           │
+│ 76      │ 'audit_logs_p_default'              │ 'user_id'                  │ 'text'              │
+│ 77      │ 'audit_logs_partitioned'            │ 'id'                       │ 'integer'           │
+│ 78      │ 'audit_logs_partitioned'            │ 'record_id'                │ 'integer'           │
+│ 79      │ 'audit_logs_partitioned'            │ 'session_id'               │ 'integer'           │
+│ 80      │ 'audit_logs_partitioned'            │ 'super_admin_id'           │ 'integer'           │
+│ 81      │ 'audit_logs_partitioned'            │ 'user_id'                  │ 'text'              │
+│ 82      │ 'background_job_audit'              │ 'id'                       │ 'integer'           │
+│ 83      │ 'background_job_audit'              │ 'job_id'                   │ 'text'              │
+│ 84      │ 'background_job_audit'              │ 'user_id'                  │ 'text'              │
+│ 85      │ 'base_user_pages'                   │ 'id'                       │ 'integer'           │
+│ 86      │ 'base_user_pages'                   │ 'page_id'                  │ 'integer'           │
+│ 87      │ 'billing_invoice_items'             │ 'id'                       │ 'integer'           │
+│ 88      │ 'billing_invoice_items'             │ 'invoice_id'               │ 'integer'           │
+│ 89      │ 'billing_overrides'                 │ 'id'                       │ 'integer'           │
+│ 90      │ 'billing_profiles'                  │ 'id'                       │ 'integer'           │
+│ 91      │ 'billing_profiles'                  │ 'payment_method_id'        │ 'character varying' │
+│ 92      │ 'billing_profiles'                  │ 'stripe_customer_id'       │ 'character varying' │
+│ 93      │ 'billing_profiles'                  │ 'stripe_subscription_id'   │ 'character varying' │
+│ 94      │ 'billing_profiles'                  │ 'tax_id'                   │ 'character varying' │
+│ 95      │ 'bills'                             │ 'id'                       │ 'text'              │
+│ 96      │ 'branches'                          │ 'id'                       │ 'integer'           │
+│ 97      │ 'call_logs'                         │ 'id'                       │ 'text'              │
+│ 98      │ 'call_logs'                         │ 'initiator_id'             │ 'integer'           │
+│ 99      │ 'call_logs'                         │ 'thread_id'                │ 'text'              │
+│ 100     │ 'chat_analytics'                    │ 'conversation_id'          │ 'integer'           │
+│ 101     │ 'chat_analytics'                    │ 'id'                       │ 'integer'           │
+│ 102     │ 'chat_analytics'                    │ 'role_id'                  │ 'integer'           │
+│ 103     │ 'chat_analytics'                    │ 'user_id'                  │ 'character varying' │
+│ 104     │ 'chat_common_mistakes'              │ 'id'                       │ 'integer'           │
+│ 105     │ 'chat_context_slots'                │ 'id'                       │ 'integer'           │
+│ 106     │ 'chat_conversation_context'         │ 'id'                       │ 'integer'           │
+│ 107     │ 'chat_conversation_context'         │ 'parent_turn_id'           │ 'integer'           │
+│ 108     │ 'chat_conversation_context'         │ 'user_id'                  │ 'character varying' │
+│ 109     │ 'chat_entity_types'                 │ 'id'                       │ 'integer'           │
+│ 110     │ 'chat_feedback'                     │ 'id'                       │ 'integer'           │
+│ 111     │ 'chat_feedback'                     │ 'message_id'               │ 'integer'           │
+│ 112     │ 'chat_feedback'                     │ 'training_data_id'         │ 'integer'           │
+│ 113     │ 'chat_feedback'                     │ 'user_id'                  │ 'character varying' │
+│ 114     │ 'chat_intent_flows'                 │ 'id'                       │ 'integer'           │
+│ 115     │ 'chat_interactions'                 │ 'id'                       │ 'integer'           │
+│ 116     │ 'chat_interactions'                 │ 'session_id'               │ 'character varying' │
+│ 117     │ 'chat_interactions'                 │ 'user_id'                  │ 'character varying' │
+│ 118     │ 'chat_learning_queue'               │ 'id'                       │ 'integer'           │
+│ 119     │ 'chat_response_variants'            │ 'id'                       │ 'integer'           │
+│ 120     │ 'chat_response_variants'            │ 'training_data_id'         │ 'integer'           │
+│ 121     │ 'chat_semantic_cache'               │ 'id'                       │ 'integer'           │
+│ 122     │ 'chat_semantic_cache'               │ 'matched_training_id'      │ 'integer'           │
+│ 123     │ 'chat_training_analytics'           │ 'id'                       │ 'integer'           │
+│ 124     │ 'chat_training_data'                │ 'id'                       │ 'integer'           │
+│ 125     │ 'chat_user_preferences'             │ 'id'                       │ 'integer'           │
+│ 126     │ 'chat_user_preferences'             │ 'user_id'                  │ 'character varying' │
+│ 127     │ 'clarification_audit'               │ 'actor_id'                 │ 'text'              │
+│ 128     │ 'clarification_audit'               │ 'id'                       │ 'integer'           │
+│ 129     │ 'clarification_audit'               │ 'task_id'                  │ 'integer'           │
+│ 130     │ 'client_daily_usage'                │ 'module_id'                │ 'integer'           │
+│ 131     │ 'client_feature_overrides'          │ 'id'                       │ 'integer'           │
+│ 132     │ 'client_module_permissions'         │ 'id'                       │ 'integer'           │
+│ 133     │ 'client_module_permissions'         │ 'module_id'                │ 'integer'           │
+│ 134     │ 'client_role_assignments'           │ 'id'                       │ 'integer'           │
+│ 135     │ 'client_role_assignments'           │ 'role_id'                  │ 'integer'           │
+│ 136     │ 'client_sequences'                  │ 'id'                       │ 'integer'           │
+│ 137     │ 'client_subscriptions'              │ 'id'                       │ 'integer'           │
+│ 138     │ 'client_subscriptions'              │ 'plan_id'                  │ 'integer'           │
+│ 139     │ 'client_subscriptions'              │ 'scheduled_plan_id'        │ 'integer'           │
+│ 140     │ 'client_subscriptions'              │ 'stripe_customer_id'       │ 'character varying' │
+│ 141     │ 'client_subscriptions'              │ 'stripe_subscription_id'   │ 'character varying' │
+│ 142     │ 'client_usage_events'               │ 'id'                       │ 'integer'           │
+│ 143     │ 'client_usage_events'               │ 'module_id'                │ 'integer'           │
+│ 144     │ 'client_usage_events'               │ 'user_id'                  │ 'text'              │
+│ 145     │ 'client_usage_events_p2025_09'      │ 'id'                       │ 'integer'           │
+│ 146     │ 'client_usage_events_p2025_09'      │ 'module_id'                │ 'integer'           │
+│ 147     │ 'client_usage_events_p2025_09'      │ 'user_id'                  │ 'text'              │
+│ 148     │ 'client_usage_events_p2025_10'      │ 'id'                       │ 'integer'           │
+│ 149     │ 'client_usage_events_p2025_10'      │ 'module_id'                │ 'integer'           │
+│ 150     │ 'client_usage_events_p2025_10'      │ 'user_id'                  │ 'text'              │
+│ 151     │ 'client_usage_events_p2025_11'      │ 'id'                       │ 'integer'           │
+│ 152     │ 'client_usage_events_p2025_11'      │ 'module_id'                │ 'integer'           │
+│ 153     │ 'client_usage_events_p2025_11'      │ 'user_id'                  │ 'text'              │
+│ 154     │ 'client_usage_events_p2025_12'      │ 'id'                       │ 'integer'           │
+│ 155     │ 'client_usage_events_p2025_12'      │ 'module_id'                │ 'integer'           │
+│ 156     │ 'client_usage_events_p2025_12'      │ 'user_id'                  │ 'text'              │
+│ 157     │ 'client_usage_events_p2026_01'      │ 'id'                       │ 'integer'           │
+│ 158     │ 'client_usage_events_p2026_01'      │ 'module_id'                │ 'integer'           │
+│ 159     │ 'client_usage_events_p2026_01'      │ 'user_id'                  │ 'text'              │
+│ 160     │ 'client_usage_events_p2026_02'      │ 'id'                       │ 'integer'           │
+│ 161     │ 'client_usage_events_p2026_02'      │ 'module_id'                │ 'integer'           │
+│ 162     │ 'client_usage_events_p2026_02'      │ 'user_id'                  │ 'text'              │
+│ 163     │ 'client_usage_events_p2026_03'      │ 'id'                       │ 'integer'           │
+│ 164     │ 'client_usage_events_p2026_03'      │ 'module_id'                │ 'integer'           │
+│ 165     │ 'client_usage_events_p2026_03'      │ 'user_id'                  │ 'text'              │
+│ 166     │ 'client_usage_events_p2026_04'      │ 'id'                       │ 'integer'           │
+│ 167     │ 'client_usage_events_p2026_04'      │ 'module_id'                │ 'integer'           │
+│ 168     │ 'client_usage_events_p2026_04'      │ 'user_id'                  │ 'text'              │
+│ 169     │ 'client_usage_events_p2026_05'      │ 'id'                       │ 'integer'           │
+│ 170     │ 'client_usage_events_p2026_05'      │ 'module_id'                │ 'integer'           │
+│ 171     │ 'client_usage_events_p2026_05'      │ 'user_id'                  │ 'text'              │
+│ 172     │ 'client_usage_events_p2026_06'      │ 'id'                       │ 'integer'           │
+│ 173     │ 'client_usage_events_p2026_06'      │ 'module_id'                │ 'integer'           │
+│ 174     │ 'client_usage_events_p2026_06'      │ 'user_id'                  │ 'text'              │
+│ 175     │ 'client_usage_events_p2026_07'      │ 'id'                       │ 'integer'           │
+│ 176     │ 'client_usage_events_p2026_07'      │ 'module_id'                │ 'integer'           │
+│ 177     │ 'client_usage_events_p2026_07'      │ 'user_id'                  │ 'text'              │
+│ 178     │ 'client_usage_events_p2026_08'      │ 'id'                       │ 'integer'           │
+│ 179     │ 'client_usage_events_p2026_08'      │ 'module_id'                │ 'integer'           │
+│ 180     │ 'client_usage_events_p2026_08'      │ 'user_id'                  │ 'text'              │
+│ 181     │ 'client_usage_events_p2026_09'      │ 'id'                       │ 'integer'           │
+│ 182     │ 'client_usage_events_p2026_09'      │ 'module_id'                │ 'integer'           │
+│ 183     │ 'client_usage_events_p2026_09'      │ 'user_id'                  │ 'text'              │
+│ 184     │ 'client_usage_events_p2026_10'      │ 'id'                       │ 'integer'           │
+│ 185     │ 'client_usage_events_p2026_10'      │ 'module_id'                │ 'integer'           │
+│ 186     │ 'client_usage_events_p2026_10'      │ 'user_id'                  │ 'text'              │
+│ 187     │ 'client_usage_events_p2026_11'      │ 'id'                       │ 'integer'           │
+│ 188     │ 'client_usage_events_p2026_11'      │ 'module_id'                │ 'integer'           │
+│ 189     │ 'client_usage_events_p2026_11'      │ 'user_id'                  │ 'text'              │
+│ 190     │ 'client_usage_events_p_default'     │ 'id'                       │ 'integer'           │
+│ 191     │ 'client_usage_events_p_default'     │ 'module_id'                │ 'integer'           │
+│ 192     │ 'client_usage_events_p_default'     │ 'user_id'                  │ 'text'              │
+│ 193     │ 'client_usage_events_partitioned'   │ 'id'                       │ 'integer'           │
+│ 194     │ 'client_usage_events_partitioned'   │ 'module_id'                │ 'integer'           │
+│ 195     │ 'client_usage_events_partitioned'   │ 'user_id'                  │ 'text'              │
+│ 196     │ 'clients'                           │ 'stripe_customer_id'       │ 'character varying' │
+│ 197     │ 'clients'                           │ 'stripe_subscription_id'   │ 'character varying' │
+│ 198     │ 'clients'                           │ 'super_admin_id'           │ 'integer'           │
+│ 199     │ 'clients'                           │ 'tax_id'                   │ 'character varying' │
+│ 200     │ 'clients'                           │ 'unique_id'                │ 'character varying' │
+│ 201     │ 'coupon_redemptions'                │ 'subscription_id'          │ 'integer'           │
+│ 202     │ 'coupon_share_logs'                 │ 'id'                       │ 'integer'           │
+│ 203     │ 'coupon_templates'                  │ 'id'                       │ 'integer'           │
+│ 204     │ 'coupon_templates'                  │ 'plan_id'                  │ 'integer'           │
+│ 205     │ 'custom_plan_audit_log'             │ 'id'                       │ 'integer'           │
+│ 206     │ 'custom_tenant_feature_controls'    │ 'id'                       │ 'integer'           │
+│ 207     │ 'custom_tenant_plan_configurations' │ 'id'                       │ 'integer'           │
+│ 208     │ 'customers'                         │ 'id'                       │ 'integer'           │
+│ 209     │ 'data_scopes'                       │ 'id'                       │ 'integer'           │
+│ 210     │ 'effective_access_cache'            │ 'id'                       │ 'integer'           │
+│ 211     │ 'effective_access_cache'            │ 'is_valid'                 │ 'boolean'           │
+│ 212     │ 'effective_access_cache'            │ 'plan_id'                  │ 'integer'           │
+│ 213     │ 'effective_access_cache'            │ 'user_id'                  │ 'text'              │
+│ 214     │ 'enforcement_decision_log'          │ 'id'                       │ 'integer'           │
+│ 215     │ 'enforcement_decision_log'          │ 'user_id'                  │ 'text'              │
+│ 216     │ 'enterprise_admins'                 │ 'id'                       │ 'integer'           │
+│ 217     │ 'entity_id_registry'                │ 'entity_db_id'             │ 'integer'           │
+│ 218     │ 'entity_id_registry'                │ 'id'                       │ 'integer'           │
+│ 219     │ 'entity_id_registry'                │ 'unique_id'                │ 'character varying' │
+│ 220     │ 'entity_id_sequences'               │ 'id'                       │ 'integer'           │
+│ 221     │ 'error_logs'                        │ 'id'                       │ 'integer'           │
+│ 222     │ 'error_logs'                        │ 'user_id'                  │ 'text'              │
+│ 223     │ 'events'                            │ 'id'                       │ 'integer'           │
+│ 224     │ 'events'                            │ 'user_id'                  │ 'text'              │
+│ 225     │ 'expenses'                          │ 'id'                       │ 'text'              │
+│ 226     │ 'failed_login_attempts'             │ 'id'                       │ 'integer'           │
+│ 227     │ 'failed_login_attempts'             │ 'user_id'                  │ 'text'              │
+│ 228     │ 'fallback_logs'                     │ 'id'                       │ 'integer'           │
+│ 229     │ 'fallback_logs'                     │ 'user_id'                  │ 'character varying' │
+│ 230     │ 'feature_catalog'                   │ 'id'                       │ 'integer'           │
+│ 231     │ 'feature_flag_definitions'          │ 'id'                       │ 'integer'           │
+│ 232     │ 'feature_grace_periods'             │ 'id'                       │ 'integer'           │
+│ 233     │ 'feature_grace_periods'             │ 'invoice_id'               │ 'integer'           │
+│ 234     │ 'feature_grace_periods'             │ 'unlock_id'                │ 'integer'           │
+│ 235     │ 'feature_micro_unlocks'             │ 'id'                       │ 'integer'           │
+│ 236     │ 'feature_usage_counters'            │ 'id'                       │ 'integer'           │
+│ 237     │ 'infrastructure_billing_rates'      │ 'id'                       │ 'integer'           │
+│ 238     │ 'invoices'                          │ 'amount_paid'              │ 'numeric'           │
+│ 239     │ 'invoices'                          │ 'billing_profile_id'       │ 'integer'           │
+│ 240     │ 'invoices'                          │ 'stripe_invoice_id'        │ 'character varying' │
+│ 241     │ 'items'                             │ 'brand_id'                 │ 'integer'           │
+│ 242     │ 'items'                             │ 'category_id'              │ 'integer'           │
+│ 243     │ 'items'                             │ 'id'                       │ 'integer'           │
+│ 244     │ 'items'                             │ 'subcategory_id'           │ 'integer'           │
+│ 245     │ 'load_test_reports'                 │ 'id'                       │ 'integer'           │
+│ 246     │ 'master_feature_definitions'        │ 'id'                       │ 'integer'           │
+│ 247     │ 'master_subscription_plans'         │ 'id'                       │ 'integer'           │
+│ 248     │ 'message_reactions'                 │ 'id'                       │ 'bigint'            │
+│ 249     │ 'message_reactions'                 │ 'message_id'               │ 'text'              │
+│ 250     │ 'message_reactions'                 │ 'user_id'                  │ 'text'              │
+│ 251     │ 'message_reads'                     │ 'id'                       │ 'bigint'            │
+│ 252     │ 'message_reads'                     │ 'message_id'               │ 'text'              │
+│ 253     │ 'message_reads'                     │ 'user_id'                  │ 'text'              │
+│ 254     │ 'micro_subscription_plans'          │ 'id'                       │ 'integer'           │
+│ 255     │ 'micro_unlock_audit_log'            │ 'actor_id'                 │ 'text'              │
+│ 256     │ 'micro_unlock_audit_log'            │ 'id'                       │ 'integer'           │
+│ 257     │ 'micro_unlock_audit_log'            │ 'target_id'                │ 'character varying' │
+│ 258     │ 'micro_unlock_invoices'             │ 'id'                       │ 'integer'           │
+│ 259     │ 'migration_history'                 │ 'id'                       │ 'integer'           │
+│ 260     │ 'module_approval_flows'             │ 'id'                       │ 'integer'           │
+│ 261     │ 'module_approval_flows'             │ 'module_id'                │ 'integer'           │
+│ 262     │ 'module_assignments'                │ 'id'                       │ 'integer'           │
+│ 263     │ 'module_assignments'                │ 'module_id'                │ 'integer'           │
+│ 264     │ 'module_assignments'                │ 'super_admin_id'           │ 'integer'           │
+│ 265     │ 'modules'                           │ 'id'                       │ 'integer'           │
+│ 266     │ 'modules_master'                    │ 'id'                       │ 'integer'           │
+│ 267     │ 'modules_master'                    │ 'parent_module_id'         │ 'integer'           │
+│ 268     │ 'org_units'                         │ 'manager_id'               │ 'integer'           │
+│ 269     │ 'otp_tokens'                        │ 'id'                       │ 'text'              │
+│ 270     │ 'pages_master'                      │ 'id'                       │ 'integer'           │
+│ 271     │ 'pages_master'                      │ 'module_id'                │ 'integer'           │
+│ 272     │ 'partial_payment_disallow'          │ 'payment_request_id'       │ 'character varying' │
+│ 273     │ 'password_history'                  │ 'id'                       │ 'integer'           │
+│ 274     │ 'password_history'                  │ 'user_id'                  │ 'text'              │
+│ 275     │ 'payment_activity_logs'             │ 'id'                       │ 'integer'           │
+│ 276     │ 'payment_records'                   │ 'id'                       │ 'text'              │
+│ 277     │ 'payment_request_line_items'        │ 'id'                       │ 'integer'           │
+│ 278     │ 'payment_request_messages'          │ 'payment_request_id'       │ 'character varying' │
+│ 279     │ 'payment_request_partial_payments'  │ 'amount_paid'              │ 'numeric'           │
+│ 280     │ 'payment_request_partial_payments'  │ 'bank_transaction_id'      │ 'character varying' │
+│ 281     │ 'payment_request_partial_payments'  │ 'payment_request_id'       │ 'character varying' │
+│ 282     │ 'payment_requests'                  │ 'id'                       │ 'text'              │
+│ 283     │ 'payment_settlement_batches'        │ 'bank_transaction_id'      │ 'character varying' │
+│ 284     │ 'payments'                          │ 'stripe_charge_id'         │ 'character varying' │
+│ 285     │ 'payments'                          │ 'stripe_payment_intent_id' │ 'character varying' │
+│ 286     │ 'permission_cache'                  │ 'id'                       │ 'integer'           │
+│ 287     │ 'permission_cache'                  │ 'user_id'                  │ 'text'              │
+│ 288     │ 'personal_user_dictionary'          │ 'id'                       │ 'integer'           │
+│ 289     │ 'personal_user_dictionary'          │ 'owner_id'                 │ 'text'              │
+│ 290     │ 'personal_user_dictionary'          │ 'user_id'                  │ 'text'              │
+│ 291     │ 'plan_change_audit_log'             │ 'id'                       │ 'integer'           │
+│ 292     │ 'plan_change_audit_log'             │ 'target_id'                │ 'character varying' │
+│ 293     │ 'plan_feature_controls'             │ 'id'                       │ 'integer'           │
+│ 294     │ 'plan_feature_controls'             │ 'plan_id'                  │ 'integer'           │
+│ 295     │ 'plan_feature_controls_draft'       │ 'id'                       │ 'integer'           │
+│ 296     │ 'plan_feature_controls_draft'       │ 'plan_id'                  │ 'integer'           │
+│ 297     │ 'plan_module_access'                │ 'id'                       │ 'integer'           │
+│ 298     │ 'plan_module_access'                │ 'module_id'                │ 'character varying' │
+│ 299     │ 'plan_module_access'                │ 'plan_id'                  │ 'integer'           │
+│ 300     │ 'plan_module_access_draft'          │ 'id'                       │ 'integer'           │
+│ 301     │ 'plan_module_access_draft'          │ 'module_id'                │ 'character varying' │
+│ 302     │ 'plan_module_access_draft'          │ 'plan_id'                  │ 'integer'           │
+│ 303     │ 'preprocessing_settings'            │ 'id'                       │ 'integer'           │
+│ 304     │ 'preprocessor_audit'                │ 'id'                       │ 'integer'           │
+│ 305     │ 'preprocessor_audit'                │ 'user_id'                  │ 'text'              │
+│ 306     │ 'protected_spans'                   │ 'id'                       │ 'integer'           │
+│ 307     │ 'qa_issue_comments'                 │ 'author_id'                │ 'bigint'            │
+│ 308     │ 'qa_issue_comments'                 │ 'id'                       │ 'bigint'            │
+│ 309     │ 'qa_issue_comments'                 │ 'issue_id'                 │ 'bigint'            │
+│ 310     │ 'qa_issue_history'                  │ 'id'                       │ 'bigint'            │
+│ 311     │ 'qa_issue_history'                  │ 'issue_id'                 │ 'bigint'            │
+│ 312     │ 'qa_issues'                         │ 'id'                       │ 'bigint'            │
+│ 313     │ 'qa_issues'                         │ 'related_task_id'          │ 'bigint'            │
+│ 314     │ 'qa_test_tasks'                     │ 'id'                       │ 'bigint'            │
+│ 315     │ 'rate_limit_violations'             │ 'id'                       │ 'integer'           │
+│ 316     │ 'rate_limit_violations'             │ 'user_id'                  │ 'text'              │
+│ 317     │ 'rbac_actions'                      │ 'id'                       │ 'integer'           │
+│ 318     │ 'rbac_permissions'                  │ 'action_id'                │ 'integer'           │
+│ 319     │ 'rbac_permissions'                  │ 'id'                       │ 'integer'           │
+│ 320     │ 'rbac_permissions'                  │ 'role_id'                  │ 'integer'           │
+│ 321     │ 'rbac_permissions'                  │ 'route_id'                 │ 'integer'           │
+│ 322     │ 'rbac_roles'                        │ 'data_scope_id'            │ 'integer'           │
+│ 323     │ 'rbac_roles'                        │ 'id'                       │ 'integer'           │
+│ 324     │ 'rbac_routes'                       │ 'id'                       │ 'integer'           │
+│ 325     │ 'rbac_user_permissions'             │ 'id'                       │ 'integer'           │
+│ 326     │ 'rbac_user_roles'                   │ 'id'                       │ 'integer'           │
+│ 327     │ 'rbac_user_roles'                   │ 'role_id'                  │ 'integer'           │
+│ 328     │ 'rbac_user_roles'                   │ 'user_id'                  │ 'text'              │
+│ 329     │ 'recent_activity'                   │ 'entity_id'                │ 'text'              │
+│ 330     │ 'recent_activity'                   │ 'user_id'                  │ 'text'              │
+│ 331     │ 'rent_contract_details'             │ 'stamp_duty_paid'          │ 'numeric'           │
+│ 332     │ 'resource_consumption'              │ 'id'                       │ 'integer'           │
+│ 333     │ 'review_audit'                      │ 'actor_id'                 │ 'text'              │
+│ 334     │ 'review_audit'                      │ 'id'                       │ 'integer'           │
+│ 335     │ 'review_comments'                   │ 'author_id'                │ 'integer'           │
+│ 336     │ 'role_data_scope_params'            │ 'id'                       │ 'integer'           │
+│ 337     │ 'security_access_log'               │ 'id'                       │ 'bigint'            │
+│ 338     │ 'security_access_log'               │ 'tenant_id'                │ 'text'              │
+│ 339     │ 'security_access_log'               │ 'user_id'                  │ 'text'              │
+│ 340     │ 'security_events'                   │ 'id'                       │ 'bigint'            │
+│ 341     │ 'security_events'                   │ 'user_id'                  │ 'text'              │
+│ 342     │ 'settlement_disallow_history'       │ 'payment_request_id'       │ 'character varying' │
+│ 343     │ 'settlement_line_items'             │ 'payment_request_id'       │ 'character varying' │
+│ 344     │ 'settlements'                       │ 'bank_transaction_id'      │ 'character varying' │
+│ 345     │ 'spelling_dictionary'               │ 'id'                       │ 'integer'           │
+│ 346     │ 'subscription_access_audit_log'     │ 'actor_id'                 │ 'text'              │
+│ 347     │ 'subscription_access_audit_log'     │ 'id'                       │ 'integer'           │
+│ 348     │ 'subscription_access_audit_log'     │ 'plan_id'                  │ 'integer'           │
+│ 349     │ 'subscription_access_audit_log'     │ 'request_id'               │ 'character varying' │
+│ 350     │ 'subscription_access_audit_log'     │ 'resource_id'              │ 'character varying' │
+│ 351     │ 'subscription_access_audit_log'     │ 'target_id'                │ 'integer'           │
+│ 352     │ 'subscription_action_audit'         │ 'id'                       │ 'integer'           │
+│ 353     │ 'subscription_action_audit'         │ 'plan_id'                  │ 'integer'           │
+│ 354     │ 'subscription_audit_log'            │ 'actor_id'                 │ 'text'              │
+│ 355     │ 'subscription_audit_log'            │ 'id'                       │ 'integer'           │
+│ 356     │ 'subscription_audit_log'            │ 'subscription_id'          │ 'integer'           │
+│ 357     │ 'subscription_billing_ledger'       │ 'id'                       │ 'integer'           │
+│ 358     │ 'subscription_billing_ledger'       │ 'invoice_id'               │ 'integer'           │
+│ 359     │ 'subscription_billing_ledger'       │ 'reference_id'             │ 'character varying' │
+│ 360     │ 'subscription_coupon_audit_logs'    │ 'subscription_id'          │ 'integer'           │
+│ 361     │ 'subscription_coupons'              │ 'plan_id'                  │ 'integer'           │
+│ 362     │ 'subscription_invoices'             │ 'id'                       │ 'integer'           │
+│ 363     │ 'subscription_invoices'             │ 'stripe_invoice_id'        │ 'character varying' │
+│ 364     │ 'subscription_invoices'             │ 'subscription_id'          │ 'integer'           │
+│ 365     │ 'subscription_page_features'        │ 'id'                       │ 'integer'           │
+│ 366     │ 'subscription_page_features'        │ 'plan_id'                  │ 'integer'           │
+│ 367     │ 'subscription_plans'                │ 'id'                       │ 'integer'           │
+│ 368     │ 'subscription_publish_history'      │ 'id'                       │ 'integer'           │
+│ 369     │ 'subscription_publish_log'          │ 'id'                       │ 'integer'           │
+│ 370     │ 'super_admins'                      │ 'id'                       │ 'integer'           │
+│ 371     │ 'superadmin_page_pool'              │ 'id'                       │ 'integer'           │
+│ 372     │ 'superadmin_page_pool'              │ 'page_id'                  │ 'integer'           │
+│ 373     │ 'superadmin_page_pool'              │ 'superadmin_id'            │ 'integer'           │
+│ 374     │ 'support_sessions'                  │ 'id'                       │ 'integer'           │
+│ 375     │ 'support_ticket_comments'           │ 'id'                       │ 'integer'           │
+│ 376     │ 'support_ticket_comments'           │ 'ticket_id'                │ 'integer'           │
+│ 377     │ 'support_tickets'                   │ 'id'                       │ 'integer'           │
+│ 378     │ 'system_health_config'              │ 'id'                       │ 'integer'           │
+│ 379     │ 'system_health_metrics'             │ 'id'                       │ 'integer'           │
+│ 380     │ 'system_metric_daily'               │ 'id'                       │ 'integer'           │
+│ 381     │ 'system_metric_samples'             │ 'id'                       │ 'integer'           │
+│ 382     │ 'table_classification'              │ 'has_tenant_id'            │ 'boolean'           │
+│ 383     │ 'table_classification'              │ 'requires_tenant_id'       │ 'boolean'           │
+│ 384     │ 'task_attachments'                  │ 'id'                       │ 'integer'           │
+│ 385     │ 'task_attachments'                  │ 'message_id'               │ 'integer'           │
+│ 386     │ 'task_attachments'                  │ 'task_id'                  │ 'integer'           │
+│ 387     │ 'task_audit'                        │ 'actor_id'                 │ 'text'              │
+│ 388     │ 'task_audit'                        │ 'id'                       │ 'integer'           │
+│ 389     │ 'task_audit'                        │ 'task_id'                  │ 'integer'           │
+│ 390     │ 'task_audit_logs'                   │ 'id'                       │ 'integer'           │
+│ 391     │ 'task_audit_logs'                   │ 'resource_id'              │ 'character varying' │
+│ 392     │ 'task_audit_logs'                   │ 'user_id'                  │ 'text'              │
+│ 393     │ 'task_clarifications'               │ 'requester_id'             │ 'integer'           │
+│ 394     │ 'task_clarifications'               │ 'responded_by_id'          │ 'text'              │
+│ 395     │ 'task_clarifications'               │ 'responder_department_id'  │ 'character varying' │
+│ 396     │ 'task_clarifications'               │ 'responder_id'             │ 'integer'           │
+│ 397     │ 'task_clarifications'               │ 'task_id'                  │ 'integer'           │
+│ 398     │ 'task_label_assignments'            │ 'label_id'                 │ 'integer'           │
+│ 399     │ 'task_label_assignments'            │ 'task_id'                  │ 'integer'           │
+│ 400     │ 'task_labels'                       │ 'id'                       │ 'integer'           │
+│ 401     │ 'task_participants'                 │ 'id'                       │ 'integer'           │
+│ 402     │ 'task_participants'                 │ 'task_id'                  │ 'integer'           │
+│ 403     │ 'task_participants'                 │ 'user_id'                  │ 'text'              │
+│ 404     │ 'task_request_history'              │ 'id'                       │ 'integer'           │
+│ 405     │ 'task_request_history'              │ 'request_id'               │ 'integer'           │
+│ 406     │ 'task_request_history'              │ 'session_id'               │ 'character varying' │
+│ 407     │ 'task_request_messages'             │ 'id'                       │ 'integer'           │
+│ 408     │ 'task_request_messages'             │ 'request_id'               │ 'integer'           │
+│ 409     │ 'task_reviews'                      │ 'reviewer_department_id'   │ 'character varying' │
+│ 410     │ 'task_reviews'                      │ 'reviewer_id'              │ 'integer'           │
+│ 411     │ 'task_reviews'                      │ 'sender_id'                │ 'integer'           │
+│ 412     │ 'task_reviews'                      │ 'task_id'                  │ 'integer'           │
+│ 413     │ 'task_time_entries'                 │ 'id'                       │ 'integer'           │
+│ 414     │ 'task_time_entries'                 │ 'task_id'                  │ 'integer'           │
+│ 415     │ 'task_time_entries'                 │ 'user_id'                  │ 'text'              │
+│ 416     │ 'task_watchers'                     │ 'task_id'                  │ 'integer'           │
+│ 417     │ 'task_watchers'                     │ 'user_id'                  │ 'text'              │
+│ 418     │ 'tenant_feature_unlocks'            │ 'id'                       │ 'integer'           │
+│ 419     │ 'tenant_module_overrides'           │ 'id'                       │ 'integer'           │
+│ 420     │ 'tenant_module_overrides'           │ 'module_id'                │ 'character varying' │
+│ 421     │ 'tenant_plan_assignments'           │ 'id'                       │ 'integer'           │
+│ 422     │ 'tenant_plan_assignments'           │ 'plan_id'                  │ 'integer'           │
+│ 423     │ 'tenant_plan_assignments'           │ 'previous_plan_id'         │ 'integer'           │
+│ 424     │ 'tenant_quota_overrides'            │ 'id'                       │ 'integer'           │
+│ 425     │ 'tenant_spend_limits'               │ 'id'                       │ 'integer'           │
+│ 426     │ 'tenant_subscription'               │ 'id'                       │ 'integer'           │
+│ 427     │ 'tenant_subscription'               │ 'plan_id'                  │ 'integer'           │
+│ 428     │ 'tenant_usage'                      │ 'id'                       │ 'integer'           │
+│ 429     │ 'tenant_usage'                      │ 'tenant_id'                │ 'character varying' │
+│ 430     │ 'tenant_usage_monthly'              │ 'tenant_id'                │ 'character varying' │
+│ 431     │ 'thread_messages_p2025_09'          │ 'id'                       │ 'text'              │
+│ 432     │ 'thread_messages_p2025_10'          │ 'id'                       │ 'text'              │
+│ 433     │ 'thread_messages_p2025_11'          │ 'id'                       │ 'text'              │
+│ 434     │ 'thread_messages_p2025_12'          │ 'id'                       │ 'text'              │
+│ 435     │ 'thread_messages_p2026_01'          │ 'id'                       │ 'text'              │
+│ 436     │ 'thread_messages_p2026_02'          │ 'id'                       │ 'text'              │
+│ 437     │ 'thread_messages_p2026_03'          │ 'id'                       │ 'text'              │
+│ 438     │ 'thread_messages_p2026_04'          │ 'id'                       │ 'text'              │
+│ 439     │ 'thread_messages_p2026_05'          │ 'id'                       │ 'text'              │
+│ 440     │ 'thread_messages_p2026_06'          │ 'id'                       │ 'text'              │
+│ 441     │ 'thread_messages_p2026_07'          │ 'id'                       │ 'text'              │
+│ 442     │ 'thread_messages_p2026_08'          │ 'id'                       │ 'text'              │
+│ 443     │ 'thread_messages_p2026_09'          │ 'id'                       │ 'text'              │
+│ 444     │ 'thread_messages_p2026_10'          │ 'id'                       │ 'text'              │
+│ 445     │ 'thread_messages_p2026_11'          │ 'id'                       │ 'text'              │
+│ 446     │ 'thread_messages_p_default'         │ 'id'                       │ 'text'              │
+│ 447     │ 'thread_messages_partitioned'       │ 'id'                       │ 'text'              │
+│ 448     │ 'unregistered_route_access'         │ 'id'                       │ 'integer'           │
+│ 449     │ 'unregistered_route_access'         │ 'tenant_id'                │ 'integer'           │
+│ 450     │ 'unregistered_route_access'         │ 'user_id'                  │ 'text'              │
+│ 451     │ 'usage_block_log'                   │ 'id'                       │ 'integer'           │
+│ 452     │ 'usage_block_log'                   │ 'user_id'                  │ 'text'              │
+│ 453     │ 'usage_counters'                    │ 'id'                       │ 'integer'           │
+│ 454     │ 'usage_counters'                    │ 'user_id'                  │ 'text'              │
+│ 455     │ 'usage_records'                     │ 'billing_profile_id'       │ 'integer'           │
+│ 456     │ 'usage_records'                     │ 'stripe_usage_record_id'   │ 'character varying' │
+│ 457     │ 'user_achievements'                 │ 'id'                       │ 'integer'           │
+│ 458     │ 'user_achievements'                 │ 'user_id'                  │ 'text'              │
+│ 459     │ 'user_addresses'                    │ 'id'                       │ 'integer'           │
+│ 460     │ 'user_addresses'                    │ 'user_id'                  │ 'text'              │
+│ 461     │ 'user_bank_accounts'                │ 'id'                       │ 'integer'           │
+│ 462     │ 'user_bank_accounts'                │ 'user_id'                  │ 'text'              │
+│ 463     │ 'user_branches'                     │ 'branch_id'                │ 'integer'           │
+│ 464     │ 'user_branches'                     │ 'id'                       │ 'integer'           │
+│ 465     │ 'user_branches'                     │ 'user_id'                  │ 'text'              │
+│ 466     │ 'user_education'                    │ 'id'                       │ 'integer'           │
+│ 467     │ 'user_education'                    │ 'user_id'                  │ 'text'              │
+│ 468     │ 'user_emergency_contacts'           │ 'id'                       │ 'integer'           │
+│ 469     │ 'user_emergency_contacts'           │ 'user_id'                  │ 'text'              │
+│ 470     │ 'user_kyc'                          │ 'id'                       │ 'integer'           │
+│ 471     │ 'user_kyc'                          │ 'user_id'                  │ 'text'              │
+│ 472     │ 'user_org_units'                    │ 'id'                       │ 'integer'           │
+│ 473     │ 'user_org_units'                    │ 'user_id'                  │ 'text'              │
+│ 474     │ 'user_profiles'                     │ 'id'                       │ 'integer'           │
+│ 475     │ 'user_profiles'                     │ 'user_id'                  │ 'text'              │
+│ 476     │ 'user_sessions'                     │ 'id'                       │ 'integer'           │
+│ 477     │ 'user_sessions'                     │ 'user_id'                  │ 'text'              │
+│ 478     │ 'user_skills'                       │ 'id'                       │ 'integer'           │
+│ 479     │ 'user_skills'                       │ 'user_id'                  │ 'text'              │
+│ 480     │ 'users'                             │ 'legacy_id'                │ 'text'              │
+│ 481     │ 'users_enhanced'                    │ 'legacy_id'                │ 'text'              │
+│ 482     │ 'users_enhanced'                    │ 'super_admin_id'           │ 'integer'           │
+│ 483     │ 'users_enhanced'                    │ 'unique_id'                │ 'character varying' │
+│ 484     │ 'v_audit_summary_24h'               │ 'user_id'                  │ 'text'              │
+│ 485     │ 'v_security_events_24h'             │ 'user_id'                  │ 'text'              │
+│ 486     │ 'v_sidebar_menu'                    │ 'id'                       │ 'integer'           │
+│ 487     │ 'v_sidebar_menu'                    │ 'module_id'                │ 'integer'           │
+│ 488     │ 'v_table_classification_summary'    │ 'missing_tenant_id'        │ 'bigint'            │
+│ 489     │ 'v_tenant_module_access'            │ 'module_id'                │ 'character varying' │
+│ 490     │ 'vendor_banks'                      │ 'upi_id'                   │ 'character varying' │
+│ 491     │ 'vendor_business_types'             │ 'id'                       │ 'integer'           │
+│ 492     │ 'vendor_industry_categories'        │ 'id'                       │ 'integer'           │
+│ 493     │ 'vendor_industry_categories'        │ 'parent_id'                │ 'integer'           │
+│ 494     │ 'vendor_legal'                      │ 'business_type_id'         │ 'integer'           │
+│ 495     │ 'vendor_legal'                      │ 'industry_id'              │ 'integer'           │
+│ 496     │ 'vendors'                           │ 'id'                       │ 'integer'           │
+│ 497     │ 'workflow_audit'                    │ 'id'                       │ 'integer'           │
+│ 498     │ 'workflow_audit'                    │ 'user_id'                  │ 'text'              │
+│ 499     │ 'workflow_audit'                    │ 'workflow_id'              │ 'integer'           │
+│ 500     │ 'workflow_feedback'                 │ 'id'                       │ 'integer'           │
+│ 501     │ 'workflow_feedback'                 │ 'user_id'                  │ 'text'              │
+│ 502     │ 'workflow_feedback'                 │ 'workflow_id'              │ 'integer'           │
+│ 503     │ 'workflow_permission_map'           │ 'id'                       │ 'integer'           │
+│ 504     │ 'workflow_permission_map'           │ 'workflow_id'              │ 'integer'           │
+│ 505     │ 'workflow_role_map'                 │ 'id'                       │ 'integer'           │
+│ 506     │ 'workflow_role_map'                 │ 'role_id'                  │ 'text'              │
+│ 507     │ 'workflow_role_map'                 │ 'workflow_id'              │ 'integer'           │
+│ 508     │ 'workflow_task_history'             │ 'id'                       │ 'integer'           │
+│ 509     │ 'workflow_task_history'             │ 'task_id'                  │ 'integer'           │
+│ 510     │ 'workflow_tasks'                    │ 'department_id'            │ 'integer'           │
+│ 511     │ 'workflow_tasks'                    │ 'organization_id'          │ 'integer'           │
+│ 512     │ 'workflows'                         │ 'id'                       │ 'integer'           │
+└─────────┴─────────────────────────────────────┴────────────────────────────┴─────────────────────┘
