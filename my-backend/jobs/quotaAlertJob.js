@@ -19,6 +19,17 @@ const ERROR_BUDGET_WARNING_THRESHOLD = 20; // Percentage remaining
 const sentAlerts = new Map();
 
 // ============================================================================
+// Helper: Calculate API calls from client_daily_usage fields
+// ============================================================================
+function calculateApiCalls(usage) {
+  if (!usage) return 0;
+  return (usage.view_count || 0) + 
+         (usage.create_count || 0) + 
+         (usage.edit_count || 0) + 
+         (usage.delete_count || 0);
+}
+
+// ============================================================================
 // Get Tenant Admin Email
 // ============================================================================
 async function getTenantAdminEmail(tenantId) {
@@ -105,8 +116,9 @@ async function checkTenantQuota(tenant, today) {
   const adminEmail = await getTenantAdminEmail(tenant.id);
   if (!adminEmail) return;
 
-  // Check API calls
-  const apiCallsPercent = Math.round((usage.api_calls / quota.apiCallsPerDay) * 100);
+  // Check API calls (calculated from view/create/edit/delete counts)
+  const apiCalls = calculateApiCalls(usage);
+  const apiCallsPercent = Math.round((apiCalls / quota.apiCallsPerDay) * 100);
   if (apiCallsPercent >= QUOTA_WARNING_THRESHOLD) {
     const alertKey = `${tenant.id}-api-${today}`;
     if (!sentAlerts.has(alertKey)) {
@@ -114,7 +126,7 @@ async function checkTenantQuota(tenant, today) {
         tenant.id,
         tenant.name,
         'API Calls',
-        usage.api_calls,
+        apiCalls,
         quota.apiCallsPerDay,
         apiCallsPercent,
         adminEmail
@@ -191,9 +203,9 @@ async function checkErrorBudget() {
           }
         });
 
-        const totalRequests = usage.reduce((sum, d) => sum + (d.api_calls || 0), 0);
-        const totalErrors = usage.reduce((sum, d) => sum + (d.errors || 0), 0);
-        const errorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+        const totalRequests = usage.reduce((sum, d) => sum + calculateApiCalls(d), 0);
+        // Note: errors field doesn't exist in client_daily_usage, using 0
+        const errorRate = 0;
         const availability = 100 - errorRate;
 
         // Calculate error budget

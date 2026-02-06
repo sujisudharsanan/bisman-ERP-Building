@@ -13,6 +13,19 @@ const prisma = require('../../lib/prisma');
 const { authenticateToken } = require('../../middleware/auth');
 
 // ============================================================================
+// Helper: Calculate API calls from client_daily_usage fields
+// client_daily_usage has: view_count, create_count, edit_count, delete_count
+// We sum these to get total API calls
+// ============================================================================
+function calculateApiCalls(usage) {
+  if (!usage) return 0;
+  return (usage.view_count || 0) + 
+         (usage.create_count || 0) + 
+         (usage.edit_count || 0) + 
+         (usage.delete_count || 0);
+}
+
+// ============================================================================
 // Middleware: Require super admin or tenant admin
 // ============================================================================
 const requireAdminAccess = async (req, res, next) => {
@@ -106,20 +119,14 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
       orderBy: { date: 'asc' }
     });
 
-    // Calculate totals
+    // Calculate totals - use calculateApiCalls for client_daily_usage compatibility
     const totals = dailyUsage.reduce((acc, day) => {
-      acc.apiCalls += day.api_calls || 0;
-      acc.storageBytes += day.storage_bytes_used || 0;
+      acc.apiCalls += calculateApiCalls(day);
       acc.activeUsers = Math.max(acc.activeUsers, day.active_users || 0);
-      acc.fileUploads += day.file_uploads || 0;
-      acc.errors += day.errors || 0;
       return acc;
     }, {
       apiCalls: 0,
-      storageBytes: 0,
-      activeUsers: 0,
-      fileUploads: 0,
-      errors: 0
+      activeUsers: 0
     });
 
     // Get today's usage for real-time quota display
@@ -131,15 +138,12 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
       }
     });
 
-    // Calculate quota percentages
+    // Calculate quota percentages using helper
+    const todayApiCalls = calculateApiCalls(todayUsage);
     const quotaUsage = {
-      apiCallsToday: todayUsage?.api_calls || 0,
+      apiCallsToday: todayApiCalls,
       apiCallsLimit: quota?.apiCallsPerDay || 5000,
-      apiCallsPercent: quota ? Math.round(((todayUsage?.api_calls || 0) / quota.apiCallsPerDay) * 100) : 0,
-      
-      storageUsed: totals.storageBytes,
-      storageLimit: quota?.storageBytesLimit || 1073741824, // 1GB default
-      storagePercent: quota ? Math.round((totals.storageBytes / Number(quota.storageBytesLimit)) * 100) : 0,
+      apiCallsPercent: quota ? Math.round((todayApiCalls / quota.apiCallsPerDay) * 100) : 0,
       
       activeUsers: totals.activeUsers,
       activeUsersLimit: quota?.activeUsersLimit || 10,
@@ -165,11 +169,12 @@ router.get('/:id/usage', authenticateToken, requireAdminAccess, async (req, res)
         totals,
         dailyBreakdown: dailyUsage.map(day => ({
           date: day.date,
-          apiCalls: day.api_calls,
-          activeUsers: day.active_users,
-          storageBytes: day.storage_bytes_used,
-          fileUploads: day.file_uploads,
-          errors: day.errors
+          apiCalls: calculateApiCalls(day),
+          activeUsers: day.active_users || 0,
+          viewCount: day.view_count || 0,
+          createCount: day.create_count || 0,
+          editCount: day.edit_count || 0,
+          deleteCount: day.delete_count || 0
         }))
       }
     });
@@ -349,10 +354,9 @@ router.get('/:id/metrics', authenticateToken, requireAdminAccess, async (req, re
       orderBy: { date: 'asc' }
     });
 
-    // Calculate metrics
-    const totalRequests = dailyUsage.reduce((sum, d) => sum + (d.api_calls || 0), 0);
-    const totalErrors = dailyUsage.reduce((sum, d) => sum + (d.errors || 0), 0);
-    const errorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+    // Calculate metrics using helper for API calls
+    const totalRequests = dailyUsage.reduce((sum, d) => sum + calculateApiCalls(d), 0);
+    const errorRate = 0; // errors field doesn't exist in client_daily_usage
 
     // Calculate availability (simplified: 100% - error_rate for demo)
     // In production, would query Prometheus for actual uptime
@@ -434,16 +438,16 @@ router.get('/:id/metrics', authenticateToken, requireAdminAccess, async (req, re
         },
         requestStats: {
           total: totalRequests,
-          successful: totalRequests - totalErrors,
-          failed: totalErrors
+          successful: totalRequests, // errors not tracked in client_daily_usage
+          failed: 0
         },
         dailyMetrics: dailyUsage.map(day => ({
           date: day.date,
-          requests: day.api_calls || 0,
-          errors: day.errors || 0,
-          errorRate: day.api_calls > 0 
-            ? parseFloat(((day.errors || 0) / day.api_calls * 100).toFixed(2))
-            : 0
+          requests: calculateApiCalls(day),
+          viewCount: day.view_count || 0,
+          createCount: day.create_count || 0,
+          editCount: day.edit_count || 0,
+          deleteCount: day.delete_count || 0
         }))
       }
     });
@@ -530,9 +534,11 @@ router.get('/:id/summary', authenticateToken, requireAdminAccess, async (req, re
     });
 
     const avgDailyUsage = last7Days.length > 0
-      ? Math.round(last7Days.reduce((sum, d) => sum + (d.api_calls || 0), 0) / last7Days.length)
+      ? Math.round(last7Days.reduce((sum, d) => sum + calculateApiCalls(d), 0) / last7Days.length)
       : 0;
 
+    const todayApiCalls = calculateApiCalls(todayUsage);
+    
     res.json({
       success: true,
       data: {
@@ -547,10 +553,10 @@ router.get('/:id/summary', authenticateToken, requireAdminAccess, async (req, re
             new Date(tenant.trial_end_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           paymentFailed: tenant.payment_failed,
           quotaWarning: quota && todayUsage && 
-            (todayUsage.api_calls / quota.apiCallsPerDay) > 0.8
+            (todayApiCalls / quota.apiCallsPerDay) > 0.8
         },
         quickStats: {
-          apiCallsToday: todayUsage?.api_calls || 0,
+          apiCallsToday: todayApiCalls,
           apiCallsLimit: quota?.apiCallsPerDay || 5000,
           activeUsers: todayUsage?.active_users || 0,
           avgDailyApiCalls: avgDailyUsage,
