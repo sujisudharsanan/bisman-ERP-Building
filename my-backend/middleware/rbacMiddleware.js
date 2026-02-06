@@ -524,7 +524,7 @@ async function getUserMaxRoleLevel(userId) {
       SELECT MAX(r.level) as max_level
       FROM rbac_user_roles ur
       JOIN rbac_roles r ON ur.role_id = r.id
-      WHERE ur.user_id = ${parseInt(userId)}
+      WHERE ur.user_id_uuid = ${userId}::uuid OR ur.user_id = ${String(userId)}
     `;
     
     const maxLevel = result?.[0]?.max_level;

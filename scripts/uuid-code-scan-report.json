@@ -1,16 +1,7 @@
 {
-  "timestamp": "2026-02-06T11:52:40.513Z",
-  "totalIssues": 97,
+  "timestamp": "2026-02-06T12:18:31.531Z",
+  "totalIssues": 93,
   "byFile": {
-    "my-backend/app.js": [
-      {
-        "file": "my-backend/app.js",
-        "line": 4874,
-        "pattern": "parseInt() used on UUID field",
-        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
-        "code": "const userIdNum = parseInt(String(userId), 10);"
-      }
-    ],
     "my-backend/controllers/qaController.js": [
       {
         "file": "my-backend/controllers/qaController.js",
@@ -206,33 +197,6 @@
         "pattern": "Accessing creator.username (may not exist)",
         "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
         "code": "creator.username as creator_name,"
-      }
-    ],
-    "my-backend/middleware/businessLevelProtection.js": [
-      {
-        "file": "my-backend/middleware/businessLevelProtection.js",
-        "line": 43,
-        "pattern": "parseInt() used on UUID field",
-        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
-        "code": "const targetUserId = parseInt(req.params.userId || req.params.id || req.body.userId);"
-      }
-    ],
-    "my-backend/middleware/planModuleAccessMiddleware.js": [
-      {
-        "file": "my-backend/middleware/planModuleAccessMiddleware.js",
-        "line": 314,
-        "pattern": "Number() used on UUID field",
-        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
-        "code": "user_id: req.user?.id ? Number(req.user.id) : null,"
-      }
-    ],
-    "my-backend/middleware/rbacMiddleware.js": [
-      {
-        "file": "my-backend/middleware/rbacMiddleware.js",
-        "line": 527,
-        "pattern": "parseInt() used on UUID field",
-        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
-        "code": "WHERE ur.user_id = ${parseInt(userId)}"
       }
     ],
     "my-backend/middleware/rlsMiddleware.js": [
@@ -765,10 +729,10 @@
     ]
   },
   "byPattern": {
-    "parseInt() used on UUID field": 55,
+    "parseInt() used on UUID field": 52,
     "Accessing creator.username (may not exist)": 13,
-    "Number() used on UUID field": 11,
     "SQL cast to INTEGER for ID": 15,
+    "Number() used on UUID field": 10,
     "Prisma where with Number() conversion": 3
   }
 }

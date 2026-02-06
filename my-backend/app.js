@@ -4870,23 +4870,20 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
     // Get user permissions from database - handle case where user has no RBAC entries
     let userPermissions = [];
     try {
-      // Convert userId to number for Prisma query
-      const userIdNum = parseInt(String(userId), 10);
-      if (!isNaN(userIdNum)) {
-        userPermissions = await prisma.$queryRaw`
-          SELECT DISTINCT 
-            CONCAT(rt.path, '.', act.name) as permission_key
-          FROM rbac_user_roles ur
-          JOIN rbac_permissions p ON ur.role_id = p.role_id
-          JOIN rbac_routes rt ON p.route_id = rt.id
-          JOIN rbac_actions act ON p.action_id = act.id
-          WHERE ur.user_id = ${userIdNum}
-            AND COALESCE(ur.is_active, true) = true
-            AND COALESCE(p.is_active, true) = true
-            AND COALESCE(rt.is_active, true) = true
-            AND COALESCE(act.is_active, true) = true
-        `;
-      }
+      // Use UUID for user lookup (user_id_uuid column or legacy user_id)
+      userPermissions = await prisma.$queryRaw`
+        SELECT DISTINCT 
+          CONCAT(rt.path, '.', act.name) as permission_key
+        FROM rbac_user_roles ur
+        JOIN rbac_permissions p ON ur.role_id = p.role_id
+        JOIN rbac_routes rt ON p.route_id = rt.id
+        JOIN rbac_actions act ON p.action_id = act.id
+        WHERE (ur.user_id_uuid = ${userId}::uuid OR ur.user_id = ${String(userId)})
+          AND COALESCE(ur.is_active, true) = true
+          AND COALESCE(p.is_active, true) = true
+          AND COALESCE(rt.is_active, true) = true
+          AND COALESCE(act.is_active, true) = true
+      `;
     } catch (queryErr) {
       console.warn('RBAC permissions query failed (user may have no RBAC entries):', queryErr.message);
       // Continue with empty permissions - user just has no RBAC entries yet

@@ -311,7 +311,7 @@ function requirePlanModuleAccess(moduleId) {
           await prisma.audit_logs.create({
             data: {
               tenant_id: tenantId,
-              user_id: req.user?.id ? Number(req.user.id) : null,
+              user_id: req.user?.id ? String(req.user.id) : null,
               action: 'MODULE_ACCESS_DENIED',
               table_name: 'plan_module_access',
               new_values: {

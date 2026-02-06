@@ -39,8 +39,8 @@ function protectBusinessLevel(options = {}) {
         return next();
       }
       
-      // Get target user ID from params or body
-      const targetUserId = parseInt(req.params.userId || req.params.id || req.body.userId);
+      // Get target user ID from params or body (can be UUID or legacy integer)
+      const targetUserId = req.params.userId || req.params.id || req.body.userId;
       const currentUserId = user.id;
       const currentSystemScope = user.system_scope || 'BUSINESS';
       const currentUserLevel = user.business_level || 1;
