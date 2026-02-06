@@ -39,7 +39,7 @@ try {
 /**
  * Save webhook event to database for audit trail
  */
-async function saveWebhookEvent(event, billingProfileId, status = 'received', error = null) {
+async function saveWebhookEvent(event, billing_profile_id, status = 'received', error = null) {
   try {
     await prisma.billingWebhookEvent.upsert({
       where: { stripeEventId: event.id },
@@ -51,7 +51,7 @@ async function saveWebhookEvent(event, billingProfileId, status = 'received', er
       create: {
         stripeEventId: event.id,
         eventType: event.type,
-        billingProfileId,
+        billing_profile_id,
         payload: event.data.object,
         status,
         processedAt: status === 'processed' ? new Date() : null,
@@ -66,12 +66,12 @@ async function saveWebhookEvent(event, billingProfileId, status = 'received', er
 /**
  * Get billing profile ID from Stripe customer ID
  */
-async function getBillingProfileFromCustomer(stripeCustomerId) {
-  if (!stripeCustomerId) return null;
+async function getBillingProfileFromCustomer(stripe_customer_id) {
+  if (!stripe_customer_id) return null;
   
   try {
-    const profile = await prisma.billingProfile.findFirst({
-      where: { stripeCustomerId },
+    const profile = await prisma.billing_profiles.findFirst({
+      where: { stripe_customer_id },
       select: { id: true, clientId: true }
     });
     return profile;
@@ -210,43 +210,43 @@ async function handleInvoicePaid(stripeInvoice, billingProfile) {
 
   try {
     // Generate invoice number if needed
-    const invoiceNumber = stripeInvoice.number || `INV-${Date.now()}`;
+    const invoice_number = stripeInvoice.number || `INV-${Date.now()}`;
     
     // Upsert invoice to local database
-    await prisma.invoice.upsert({
-      where: { stripeInvoiceId: stripeInvoice.id },
+    await prisma.invoices.upsert({
+      where: { stripe_invoice_id: stripeInvoice.id },
       update: {
         status: 'paid',
         paidAt: new Date(),
-        amountPaid: stripeInvoice.amount_paid / 100, // Convert from cents
-        amountDue: 0,
-        stripePdfUrl: stripeInvoice.invoice_pdf,
-        stripeHostedUrl: stripeInvoice.hosted_invoice_url,
+        amount_paid: stripeInvoice.amount_paid / 100, // Convert from cents
+        amount_due: 0,
+        stripe_pdf_url: stripeInvoice.invoice_pdf,
+        stripe_hosted_url: stripeInvoice.hosted_invoice_url,
         updatedAt: new Date()
       },
       create: {
-        billingProfileId: billingProfile.id,
-        stripeInvoiceId: stripeInvoice.id,
-        invoiceNumber,
+        billing_profile_id: billingProfile.id,
+        stripe_invoice_id: stripeInvoice.id,
+        invoice_number,
         status: 'paid',
         currency: stripeInvoice.currency?.toUpperCase() || 'USD',
         subtotal: (stripeInvoice.subtotal || 0) / 100,
         tax: (stripeInvoice.tax || 0) / 100,
         discount: (stripeInvoice.discount?.amount || 0) / 100,
         total: (stripeInvoice.total || 0) / 100,
-        amountPaid: (stripeInvoice.amount_paid || 0) / 100,
-        amountDue: 0,
-        lineItems: stripeInvoice.lines?.data?.map(line => ({
+        amount_paid: (stripeInvoice.amount_paid || 0) / 100,
+        amount_due: 0,
+        line_items: stripeInvoice.lines?.data?.map(line => ({
           description: line.description,
           amount: line.amount / 100,
           quantity: line.quantity
         })) || [],
-        invoiceDate: new Date(stripeInvoice.created * 1000),
+        invoice_date: new Date(stripeInvoice.created * 1000),
         paidAt: new Date(),
-        periodStart: stripeInvoice.period_start ? new Date(stripeInvoice.period_start * 1000) : null,
-        periodEnd: stripeInvoice.period_end ? new Date(stripeInvoice.period_end * 1000) : null,
-        stripePdfUrl: stripeInvoice.invoice_pdf,
-        stripeHostedUrl: stripeInvoice.hosted_invoice_url
+        period_start: stripeInvoice.period_start ? new Date(stripeInvoice.period_start * 1000) : null,
+        period_end: stripeInvoice.period_end ? new Date(stripeInvoice.period_end * 1000) : null,
+        stripe_pdf_url: stripeInvoice.invoice_pdf,
+        stripe_hosted_url: stripeInvoice.hosted_invoice_url
       }
     });
 
@@ -259,8 +259,8 @@ async function handleInvoicePaid(stripeInvoice, billingProfile) {
           paidAt: new Date()
         },
         create: {
-          invoiceId: (await prisma.invoice.findFirst({
-            where: { stripeInvoiceId: stripeInvoice.id }
+          invoiceId: (await prisma.invoices.findFirst({
+            where: { stripe_invoice_id: stripeInvoice.id }
           }))?.id,
           stripePaymentIntentId: stripeInvoice.payment_intent || `pi_${stripeInvoice.charge}`,
           stripeChargeId: stripeInvoice.charge,
@@ -285,34 +285,34 @@ async function handleInvoicePaymentFailed(stripeInvoice, billingProfile) {
   if (!billingProfile) return;
 
   try {
-    const invoiceNumber = stripeInvoice.number || `INV-${Date.now()}`;
+    const invoice_number = stripeInvoice.number || `INV-${Date.now()}`;
     
-    await prisma.invoice.upsert({
-      where: { stripeInvoiceId: stripeInvoice.id },
+    await prisma.invoices.upsert({
+      where: { stripe_invoice_id: stripeInvoice.id },
       update: {
         status: 'open', // Payment failed but invoice still open
         updatedAt: new Date()
       },
       create: {
-        billingProfileId: billingProfile.id,
-        stripeInvoiceId: stripeInvoice.id,
-        invoiceNumber,
+        billing_profile_id: billingProfile.id,
+        stripe_invoice_id: stripeInvoice.id,
+        invoice_number,
         status: 'open',
         currency: stripeInvoice.currency?.toUpperCase() || 'USD',
         subtotal: (stripeInvoice.subtotal || 0) / 100,
         tax: (stripeInvoice.tax || 0) / 100,
         discount: 0,
         total: (stripeInvoice.total || 0) / 100,
-        amountPaid: 0,
-        amountDue: (stripeInvoice.amount_due || 0) / 100,
-        lineItems: [],
-        invoiceDate: new Date(stripeInvoice.created * 1000),
-        dueDate: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null
+        amount_paid: 0,
+        amount_due: (stripeInvoice.amount_due || 0) / 100,
+        line_items: [],
+        invoice_date: new Date(stripeInvoice.created * 1000),
+        due_date: stripeInvoice.due_date ? new Date(stripeInvoice.due_date * 1000) : null
       }
     });
 
     // Update billing profile to mark payment issue
-    await prisma.billingProfile.update({
+    await prisma.billing_profiles.update({
       where: { id: billingProfile.id },
       data: {
         status: 'past_due'
@@ -335,17 +335,17 @@ async function handleSubscriptionUpdated(subscription, billingProfile) {
     // Update billing profile with new subscription details
     const plan = subscription.metadata?.plan || subscription.items?.data?.[0]?.price?.metadata?.plan || 'pro';
     
-    await prisma.billingProfile.update({
+    await prisma.billing_profiles.update({
       where: { id: billingProfile.id },
       data: {
-        stripeSubscriptionId: subscription.id,
+        stripe_subscription_id: subscription.id,
         plan,
         status: subscription.status === 'active' ? 'active' : 
                subscription.status === 'past_due' ? 'past_due' :
                subscription.status === 'canceled' ? 'canceled' : subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        current_period_start: new Date(subscription.current_period_start * 1000),
+        current_period_end: new Date(subscription.current_period_end * 1000),
+        cancel_at_period_end: subscription.cancel_at_period_end,
         canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
         updatedAt: new Date()
       }
@@ -364,13 +364,13 @@ async function handleSubscriptionDeleted(subscription, billingProfile) {
   if (!billingProfile) return;
 
   try {
-    await prisma.billingProfile.update({
+    await prisma.billing_profiles.update({
       where: { id: billingProfile.id },
       data: {
         status: 'canceled',
         plan: 'free',
         canceledAt: new Date(),
-        stripeSubscriptionId: null,
+        stripe_subscription_id: null,
         updatedAt: new Date()
       }
     });
