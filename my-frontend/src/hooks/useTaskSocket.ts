@@ -92,7 +92,18 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
     }
 
     // Socket server runs on the backend, not the frontend
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    // Use same logic as ChatProvider - detect production from window.location
+    let socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || '';
+    
+    // In production, derive from current hostname if env vars not set
+    if (typeof window !== 'undefined' && (!socketUrl || socketUrl.includes('localhost'))) {
+      const hostname = window.location.hostname;
+      if (hostname.includes('railway.app') || hostname.includes('bisman')) {
+        socketUrl = 'https://bisman-erp-backend-production.up.railway.app';
+      } else if (!socketUrl) {
+        socketUrl = 'http://localhost:5000';
+      }
+    }
     
     // Skip socket connection if URL is empty or not configured properly
     if (!socketUrl || socketUrl === '') {

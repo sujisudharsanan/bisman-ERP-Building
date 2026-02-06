@@ -144,6 +144,21 @@ router.get('/performance-metrics', authenticateUser, async (req, res) => {
     }
     
     // Calculate metrics based on last 30 days
+    // NOTE: legacy_id is TEXT, and workflow_tasks uses INTEGER for assignee_id/creator_id
+    const userIdInt = parseInt(userId, 10);
+    if (isNaN(userIdInt)) {
+      console.warn(`[performance-metrics] Could not parse userId ${userId} as integer`);
+      return res.json({
+        success: true,
+        data: {
+          onTimeRate: 0,
+          responseTime: 0,
+          completionRate: 0,
+          qualityScore: 0
+        }
+      });
+    }
+    
     const metricsQuery = await prisma.$queryRaw`
       WITH user_tasks AS (
         SELECT 
@@ -164,7 +179,7 @@ router.get('/performance-metrics', authenticateUser, async (req, res) => {
             ) - t.created_at
           )) / 3600 as response_hours
         FROM workflow_tasks t
-        WHERE (t.assignee_id = ${userId}::integer OR t.creator_id = ${userId}::integer)
+        WHERE (t.assignee_id = ${userIdInt} OR t.creator_id = ${userIdInt})
           AND t.created_at >= NOW() - INTERVAL '30 days'
           AND t.status NOT IN ('CANCELLED', 'ARCHIVED')
       )

@@ -26,16 +26,28 @@ router.use(authenticate);
 function getChatUserId(req) {
   // Return legacy_id as INT for chat tables
   // users_enhanced has legacy_id as string, need to parse to int
-  if (req.user.legacy_id) {
-    return parseInt(req.user.legacy_id, 10);
+  if (req.user?.legacy_id) {
+    const legacyId = parseInt(req.user.legacy_id, 10);
+    if (!isNaN(legacyId)) return legacyId;
   }
   // Fallback for legacy users table which may have integer id directly
-  if (typeof req.user.id === 'number') {
+  if (typeof req.user?.id === 'number') {
     return req.user.id;
   }
-  // Last fallback - try to parse id
-  const parsed = parseInt(req.user.id, 10);
-  return isNaN(parsed) ? null : parsed;
+  // Last fallback - try to parse id if it looks like a number
+  if (req.user?.id) {
+    const parsed = parseInt(req.user.id, 10);
+    if (!isNaN(parsed) && String(parsed) === String(req.user.id)) {
+      return parsed;
+    }
+  }
+  // Log for debugging if we can't get user ID
+  console.warn('[getChatUserId] Could not determine user ID:', { 
+    hasUser: !!req.user, 
+    userId: req.user?.id,
+    legacyId: req.user?.legacy_id 
+  });
+  return null;
 }
 
 // ==================== THREADS ====================
@@ -47,6 +59,16 @@ function getChatUserId(req) {
 router.get('/threads', async (req, res) => {
   try {
     const userId = getChatUserId(req);
+
+    // Validate user ID
+    if (userId === null || userId === undefined) {
+      console.error('[Threads] User ID could not be determined:', req.user);
+      return res.status(403).json({
+        success: false,
+        error: 'User identification failed',
+        details: 'Could not determine user ID for chat operations'
+      });
+    }
 
     // Get threads where user is a member or creator
     const threads = await prisma.threads.findMany({
