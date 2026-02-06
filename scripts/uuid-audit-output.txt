@@ -1,0 +1,537 @@
+================================================================================
+UUID MIGRATION AUDIT - Phase 1: Schema Analysis
+================================================================================
+Database: postgresql://postgres:****@hopper.proxy.rlwy.net:30204/railway
+Timestamp: 2026-02-06T11:37:28.394Z
+
+
+📊 TOTAL TABLES: 316
+
+================================================================================
+SECTION 1: ALL ID-LIKE COLUMNS AND THEIR TYPES
+================================================================================
+
+📌 UUID columns: 395
+⚠️  INTEGER columns: 428
+⚠️  TEXT columns: 337
+❓ OTHER columns: 75
+
+================================================================================
+SECTION 2: INTEGER COLUMNS THAT SHOULD BE UUID
+================================================================================
+
+🚨 CRITICAL: These INTEGER columns reference entities that use UUID:
+
+  _backup_053_thread_messages.senderId (integer)
+  _legacy_users_backup_20260106.super_admin_id (integer)
+  api_keys.client_id (integer)
+  approval_stage_instances.approver_level (integer)
+  approval_stage_instances.creator_level (integer)
+  approval_stages.min_approvers (integer)
+  approval_workflow_stages.min_approver_level_above_creator (integer)
+  approvals.approverId (integer)
+  approver_configurations.userId (integer)
+  approver_selection_logs.approverWorkload (integer)
+  assistant_memory.userId (integer)
+  audit_logs.super_admin_id (integer)
+  audit_logs_dml.client_id (integer)
+  audit_logs_p2025_12.super_admin_id (integer)
+  audit_logs_p2026_01.super_admin_id (integer)
+  audit_logs_p2026_02.super_admin_id (integer)
+  audit_logs_p2026_03.super_admin_id (integer)
+  audit_logs_p2026_04.super_admin_id (integer)
+  audit_logs_p2026_05.super_admin_id (integer)
+  audit_logs_p_default.super_admin_id (integer)
+  audit_logs_partitioned.super_admin_id (integer)
+  client_daily_usage.active_users (integer)
+  client_subscriptions.current_user_count (integer)
+  clients.super_admin_id (integer)
+  custom_tenant_plan_configurations.max_users (integer)
+  fallback_stats_hourly.affected_users (bigint)
+  master_subscription_plans.max_users (integer)
+  module_assignments.super_admin_id (integer)
+  payment_activity_logs.userId (integer)
+  payment_requests.approver_level (integer)
+  qa_issues.assigned_to (bigint)
+  qa_test_tasks.assigned_to (bigint)
+  qa_test_tasks.created_by (bigint)
+  resource_consumption.active_users_30d (integer)
+  resource_consumption.total_users (integer)
+  subscription_governance_limits.max_active_tasks_per_user (integer)
+  subscription_governance_limits.max_tasks_per_day_per_tenant (integer)
+  subscription_governance_limits.max_tasks_per_day_per_user (integer)
+  subscription_plans.max_users (integer)
+  support_tickets.assigned_to (integer)
+  task_reviews.sender_id (integer)
+  tenant_usage.active_users (integer)
+  thread_members.userId (integer)
+  thread_messages.senderId (integer)
+  thread_messages_p2025_09.senderId (integer)
+  thread_messages_p2025_10.senderId (integer)
+  thread_messages_p2025_11.senderId (integer)
+  thread_messages_p2025_12.senderId (integer)
+  thread_messages_p2026_01.senderId (integer)
+  thread_messages_p2026_02.senderId (integer)
+  thread_messages_p2026_03.senderId (integer)
+  thread_messages_p2026_04.senderId (integer)
+  thread_messages_p2026_05.senderId (integer)
+  thread_messages_p2026_06.senderId (integer)
+  thread_messages_p2026_07.senderId (integer)
+  thread_messages_p2026_08.senderId (integer)
+  thread_messages_p2026_09.senderId (integer)
+  thread_messages_p2026_10.senderId (integer)
+  thread_messages_p2026_11.senderId (integer)
+  thread_messages_p_default.senderId (integer)
+  thread_messages_partitioned.senderId (integer)
+  unregistered_route_access.tenant_id (integer)
+  users_enhanced.super_admin_id (integer)
+  v_table_classification_summary.missing_tenant_id (bigint)
+  v_table_classification_summary.user_visible_count (bigint)
+
+================================================================================
+SECTION 3: LEGACY COLUMNS (*_old, *_legacy, *_int)
+================================================================================
+
+🗑️  LEGACY COLUMNS TO REMOVE: 55
+
+  ai_usage_logs.endpoint (character varying)
+  asset_history.old_value (text)
+  audit_logs.old_values (jsonb)
+  audit_logs_dml.old_data (jsonb)
+  audit_logs_p2025_12.old_values (jsonb)
+  audit_logs_p2026_01.old_values (jsonb)
+  audit_logs_p2026_02.old_values (jsonb)
+  audit_logs_p2026_03.old_values (jsonb)
+  audit_logs_p2026_04.old_values (jsonb)
+  audit_logs_p2026_05.old_values (jsonb)
+  audit_logs_p_default.old_values (jsonb)
+  audit_logs_partitioned.old_values (jsonb)
+  chat_conversations.id_old (integer)
+  chat_conversations.user_id_old (character varying)
+  chat_messages.conversation_id_old (integer)
+  chat_messages.id_old (integer)
+  chat_messages.user_id_old (character varying)
+  clarification_audit.old_status (character varying)
+  contract_audit_logs.old_values (jsonb)
+  custom_plan_audit_log.old_values (jsonb)
+  custom_tenant_feature_controls.approval_threshold (numeric)
+  master_subscription_plans.cfo_approval_threshold (numeric)
+  micro_unlock_audit_log.old_values (jsonb)
+  payment_activity_logs.oldStatus (character varying)
+  plan_change_audit_log.old_values (jsonb)
+  plan_feature_controls.approval_threshold (numeric)
+  plan_feature_controls_draft.approval_threshold (numeric)
+  qa_issue_history.old_value (text)
+  rate_limit_violations.endpoint (character varying)
+  rbac_user_permissions.user_id_old (text)
+  reconciliation_audit_log.old_values (jsonb)
+  review_audit.old_status (character varying)
+  subscription_access_audit_log.old_state (jsonb)
+  subscription_audit_log.old_values (jsonb)
+  task_messages.id_old (integer)
+  task_messages.reply_to_id_old (integer)
+  task_messages.sender_id_old (text)
+  task_messages.task_id_old (integer)
+  task_request_history.old_value (text)
+  task_requests.converted_task_id_old (integer)
+  task_requests.id_old (integer)
+  thread_members.thread_id_old (text)
+  thread_messages.id_old (text)
+  thread_messages.reply_to_id_old (text)
+  thread_messages.thread_id_old (text)
+  threads.id_old (text)
+  users.legacy_id (text)
+  users_enhanced.legacy_id (text)
+  users_enhanced.legacy_role (character varying)
+  utr_correction_history.old_utr (character varying)
+  vendor_audit_logs.old_value (text)
+  workflow_tasks.approver_id_old (text)
+  workflow_tasks.assignee_id_old (text)
+  workflow_tasks.creator_id_old (text)
+  workflow_tasks.id_old (integer)
+
+================================================================================
+SECTION 4: USERS_ENHANCED TABLE STRUCTURE
+================================================================================
+
+
+  id                        uuid            NOT NULL
+  legacy_id                 text            NULL
+  username                  varchar         NOT NULL
+  email                     varchar         NOT NULL
+  password_hash             varchar         NOT NULL
+  salt                      varchar         NULL
+  first_name                varchar         NULL
+  last_name                 varchar         NULL
+  phone                     varchar         NULL
+  role_id                   uuid            NULL
+  legacy_role               varchar         NULL
+  is_active                 bool            NOT NULL DEFAULT false...
+  email_verified            bool            NULL DEFAULT false...
+  phone_verified            bool            NULL DEFAULT false...
+  last_login                timestamptz     NULL
+  login_attempts            int4            NULL DEFAULT 0...
+  locked_until              timestamptz     NULL
+  password_changed_at       timestamptz     NULL DEFAULT CURRENT_TIMESTAMP...
+  profile_data              jsonb           NULL DEFAULT '{}'::jsonb...
+  preferences               jsonb           NULL DEFAULT '{}'::jsonb...
+  created_at                timestamptz     NULL DEFAULT CURRENT_TIMESTAMP...
+  updated_at                timestamptz     NULL DEFAULT CURRENT_TIMESTAMP...
+  created_by                uuid            NULL
+  updated_by                uuid            NULL
+  tenant_id                 uuid            NULL
+  super_admin_id            int4            NULL
+  role                      varchar         NULL
+  product_type              varchar         NULL DEFAULT 'BUSINESS_ERP'::character varying...
+  assigned_modules          jsonb           NULL DEFAULT '[]'::jsonb...
+  page_permissions          jsonb           NULL DEFAULT '{}'::jsonb...
+  profile_pic_url           text            NULL
+  theme_preference          varchar         NULL DEFAULT 'bisman-default'::character varying...
+  unique_id                 varchar         NULL
+  business_level            int4            NULL DEFAULT 1...
+  reports_to                uuid            NULL
+  system_scope              varchar         NULL DEFAULT 'BUSINESS'::character varying...
+  data_scope_override       jsonb           NULL
+  org_unit_id               uuid            NULL
+
+================================================================================
+SECTION 5: FOREIGN KEY CONSTRAINTS
+================================================================================
+
+🚨 MISMATCHED FK TYPES: 2
+
+  audit_logs.session_id (character varying) → user_sessions.id (integer)
+  subscription_page_features.page_code (text) → pages_master.page_code (character varying)
+
+Total FKs: 234
+
+================================================================================
+SECTION 6: TABLES WITHOUT PRIMARY KEY
+================================================================================
+
+⚠️  Tables without PK: 9
+
+  _backup_053_chat_conversations
+  _backup_053_chat_messages
+  _backup_053_rbac_user_permissions
+  _backup_053_task_messages
+  _backup_053_task_requests
+  _backup_053_thread_messages
+  _backup_053_threads
+  _backup_053_workflow_tasks
+  _legacy_users_backup_20260106
+
+================================================================================
+SECTION 7: TENANT_USAGE TABLE & CONSTRAINTS
+================================================================================
+
+Columns:
+  id                   int4            NO
+  tenant_id            varchar         NO
+  date                 date            NO
+  api_calls            int4            NO
+  storage_bytes        int8            NO
+  active_users         int4            NO
+  feature_usage        jsonb           YES
+  created_at           timestamptz     YES
+  updated_at           timestamptz     YES
+
+Constraints:
+  tenant_usage_pkey: id
+  tenant_usage_tenant_date_unique: date
+  tenant_usage_tenant_date_unique: tenant_id
+
+================================================================================
+SECTION 8: RBAC TABLES ANALYSIS
+================================================================================
+
+📋 rbac_roles:
+  id                        int4
+  name                      varchar
+  description               text
+  level                     int4
+  created_at                timestamp
+  updated_at                timestamp
+  display_name              varchar
+  status                    varchar
+  is_system_role            bool
+  system_scope              varchar
+  product_type              varchar
+  data_scope                varchar
+  data_scope_id             int4
+
+📋 pages_master:
+  id                        int4
+  page_code                 varchar
+  display_name              varchar
+  description               text
+  route                     varchar
+  module_id                 int4
+  icon                      varchar
+  sort_order                int4
+  is_active                 bool
+  show_in_sidebar           bool ⚠️
+  required_roles            _text
+  required_permissions      _text
+  required_features         _text
+  min_role_level            int4
+  layout_group              varchar
+  status                    varchar
+  created_at                timestamptz
+  updated_at                timestamptz
+  is_public                 bool
+  is_governed               bool
+  is_dynamic                bool
+  route_pattern             text
+  filesystem_path           text
+  last_synced_at            timestamptz
+  sync_status               varchar
+  sync_source               varchar
+  category                  varchar
+  page_type                 varchar
+  sidebar_order             int4
+  requires_base_user        bool ⚠️
+  is_compulsory             bool
+  is_default_for_roles      bool
+
+📋 admin_role_assignments:
+  id                        int4
+  assigner_type             varchar
+  assigner_id               int4
+  role_id                   int4
+  assignee_type             varchar
+  assignee_id               int4
+  is_active                 bool
+  assigned_at               timestamp
+  updated_at                timestamp
+
+📋 admin_role_grants:
+  id                        int4
+  assigner_id               int4
+  assigner_type             varchar
+  assignee_id               int4
+  assignee_type             varchar
+  role_id                   int4
+  role_name                 varchar
+  tenant_id                 varchar ⚠️
+  is_active                 bool
+  granted_at                timestamptz
+  revoked_at                timestamptz
+  created_at                timestamptz
+  updated_at                timestamptz
+  notes                     text
+
+================================================================================
+SECTION 9: VIEWS WITH POTENTIAL TYPE ISSUES
+================================================================================
+
+Total views: 17
+  ⚠️  v_audit_summary_24h - contains type casts
+  ⚠️  v_security_events_24h - contains type casts
+  ⚠️  v_table_classification_blockers - contains type casts
+  ⚠️  fallback_stats_daily - contains type casts
+  ⚠️  fallback_stats_hourly - contains type casts
+  ⚠️  tenant_usage_monthly - contains type casts
+  ⚠️  v_approval_load_by_role - contains type casts
+  ⚠️  v_sla_breach_heatmap - contains type casts
+  ⚠️  v_fallback_usage - contains type casts
+  ⚠️  v_missing_role_impact - contains type casts
+
+================================================================================
+SECTION 10: CRITICAL TABLES DETAILED ANALYSIS
+================================================================================
+
+🔴 users_enhanced:
+    - super_admin_id is int4, should be uuid
+
+✅ users - OK
+
+❌ tasks - TABLE NOT FOUND
+
+❌ chats - TABLE NOT FOUND
+
+🔴 chat_messages:
+    - Legacy column: id_old
+    - Legacy column: conversation_id_old
+    - Legacy column: user_id_old
+
+🔴 workflows:
+    - created_by is text, should be uuid
+    - updated_by is text, should be uuid
+
+✅ branches - OK
+
+🔴 audit_logs:
+    - user_id is text, should be uuid
+    - super_admin_id is int4, should be uuid
+
+🔴 tenant_usage:
+    - tenant_id is varchar, should be uuid
+
+✅ rbac_roles - OK
+
+❌ role_page_access - TABLE NOT FOUND
+
+✅ admin_role_assignments - OK
+
+🔴 admin_page_assignments:
+    - tenant_id is varchar, should be uuid
+
+🔴 admin_role_grants:
+    - tenant_id is varchar, should be uuid
+
+🔴 effective_access_cache:
+    - user_id is text, should be uuid
+    - tenant_id is varchar, should be uuid
+
+🔴 subscription_access_audit_log:
+    - tenant_id is varchar, should be uuid
+
+================================================================================
+SECTION 11: MIGRATION RECOMMENDATIONS
+================================================================================
+
+📋 REQUIRED ACTIONS:
+
+1. CONVERT INTEGER ID COLUMNS TO UUID:
+   ALTER TABLE _backup_053_thread_messages ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE _legacy_users_backup_20260106 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE api_keys ALTER COLUMN client_id TYPE uuid USING client_id::text::uuid;
+   ALTER TABLE approval_stage_instances ALTER COLUMN approver_level TYPE uuid USING approver_level::text::uuid;
+   ALTER TABLE approval_stage_instances ALTER COLUMN creator_level TYPE uuid USING creator_level::text::uuid;
+   ALTER TABLE approval_stages ALTER COLUMN min_approvers TYPE uuid USING min_approvers::text::uuid;
+   ALTER TABLE approval_workflow_stages ALTER COLUMN min_approver_level_above_creator TYPE uuid USING min_approver_level_above_creator::text::uuid;
+   ALTER TABLE approvals ALTER COLUMN approverId TYPE uuid USING approverId::text::uuid;
+   ALTER TABLE approver_configurations ALTER COLUMN userId TYPE uuid USING userId::text::uuid;
+   ALTER TABLE approver_selection_logs ALTER COLUMN approverWorkload TYPE uuid USING approverWorkload::text::uuid;
+   ALTER TABLE assistant_memory ALTER COLUMN userId TYPE uuid USING userId::text::uuid;
+   ALTER TABLE audit_logs ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_dml ALTER COLUMN client_id TYPE uuid USING client_id::text::uuid;
+   ALTER TABLE audit_logs_p2025_12 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p2026_01 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p2026_02 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p2026_03 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p2026_04 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p2026_05 ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_p_default ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE audit_logs_partitioned ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE client_daily_usage ALTER COLUMN active_users TYPE uuid USING active_users::text::uuid;
+   ALTER TABLE client_subscriptions ALTER COLUMN current_user_count TYPE uuid USING current_user_count::text::uuid;
+   ALTER TABLE clients ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE custom_tenant_plan_configurations ALTER COLUMN max_users TYPE uuid USING max_users::text::uuid;
+   ALTER TABLE fallback_stats_hourly ALTER COLUMN affected_users TYPE uuid USING affected_users::text::uuid;
+   ALTER TABLE master_subscription_plans ALTER COLUMN max_users TYPE uuid USING max_users::text::uuid;
+   ALTER TABLE module_assignments ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE payment_activity_logs ALTER COLUMN userId TYPE uuid USING userId::text::uuid;
+   ALTER TABLE payment_requests ALTER COLUMN approver_level TYPE uuid USING approver_level::text::uuid;
+   ALTER TABLE qa_issues ALTER COLUMN assigned_to TYPE uuid USING assigned_to::text::uuid;
+   ALTER TABLE qa_test_tasks ALTER COLUMN assigned_to TYPE uuid USING assigned_to::text::uuid;
+   ALTER TABLE qa_test_tasks ALTER COLUMN created_by TYPE uuid USING created_by::text::uuid;
+   ALTER TABLE resource_consumption ALTER COLUMN active_users_30d TYPE uuid USING active_users_30d::text::uuid;
+   ALTER TABLE resource_consumption ALTER COLUMN total_users TYPE uuid USING total_users::text::uuid;
+   ALTER TABLE subscription_governance_limits ALTER COLUMN max_active_tasks_per_user TYPE uuid USING max_active_tasks_per_user::text::uuid;
+   ALTER TABLE subscription_governance_limits ALTER COLUMN max_tasks_per_day_per_tenant TYPE uuid USING max_tasks_per_day_per_tenant::text::uuid;
+   ALTER TABLE subscription_governance_limits ALTER COLUMN max_tasks_per_day_per_user TYPE uuid USING max_tasks_per_day_per_user::text::uuid;
+   ALTER TABLE subscription_plans ALTER COLUMN max_users TYPE uuid USING max_users::text::uuid;
+   ALTER TABLE support_tickets ALTER COLUMN assigned_to TYPE uuid USING assigned_to::text::uuid;
+   ALTER TABLE task_reviews ALTER COLUMN sender_id TYPE uuid USING sender_id::text::uuid;
+   ALTER TABLE tenant_usage ALTER COLUMN active_users TYPE uuid USING active_users::text::uuid;
+   ALTER TABLE thread_members ALTER COLUMN userId TYPE uuid USING userId::text::uuid;
+   ALTER TABLE thread_messages ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2025_09 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2025_10 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2025_11 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2025_12 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_01 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_02 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_03 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_04 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_05 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_06 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_07 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_08 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_09 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_10 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p2026_11 ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_p_default ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE thread_messages_partitioned ALTER COLUMN senderId TYPE uuid USING senderId::text::uuid;
+   ALTER TABLE unregistered_route_access ALTER COLUMN tenant_id TYPE uuid USING tenant_id::text::uuid;
+   ALTER TABLE users_enhanced ALTER COLUMN super_admin_id TYPE uuid USING super_admin_id::text::uuid;
+   ALTER TABLE v_table_classification_summary ALTER COLUMN missing_tenant_id TYPE uuid USING missing_tenant_id::text::uuid;
+   ALTER TABLE v_table_classification_summary ALTER COLUMN user_visible_count TYPE uuid USING user_visible_count::text::uuid;
+
+2. DROP LEGACY COLUMNS:
+   ALTER TABLE ai_usage_logs DROP COLUMN IF EXISTS endpoint;
+   ALTER TABLE asset_history DROP COLUMN IF EXISTS old_value;
+   ALTER TABLE audit_logs DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_dml DROP COLUMN IF EXISTS old_data;
+   ALTER TABLE audit_logs_p2025_12 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p2026_01 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p2026_02 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p2026_03 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p2026_04 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p2026_05 DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_p_default DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE audit_logs_partitioned DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE chat_conversations DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE chat_conversations DROP COLUMN IF EXISTS user_id_old;
+   ALTER TABLE chat_messages DROP COLUMN IF EXISTS conversation_id_old;
+   ALTER TABLE chat_messages DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE chat_messages DROP COLUMN IF EXISTS user_id_old;
+   ALTER TABLE clarification_audit DROP COLUMN IF EXISTS old_status;
+   ALTER TABLE contract_audit_logs DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE custom_plan_audit_log DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE custom_tenant_feature_controls DROP COLUMN IF EXISTS approval_threshold;
+   ALTER TABLE master_subscription_plans DROP COLUMN IF EXISTS cfo_approval_threshold;
+   ALTER TABLE micro_unlock_audit_log DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE payment_activity_logs DROP COLUMN IF EXISTS oldStatus;
+   ALTER TABLE plan_change_audit_log DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE plan_feature_controls DROP COLUMN IF EXISTS approval_threshold;
+   ALTER TABLE plan_feature_controls_draft DROP COLUMN IF EXISTS approval_threshold;
+   ALTER TABLE qa_issue_history DROP COLUMN IF EXISTS old_value;
+   ALTER TABLE rate_limit_violations DROP COLUMN IF EXISTS endpoint;
+   ALTER TABLE rbac_user_permissions DROP COLUMN IF EXISTS user_id_old;
+   ALTER TABLE reconciliation_audit_log DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE review_audit DROP COLUMN IF EXISTS old_status;
+   ALTER TABLE subscription_access_audit_log DROP COLUMN IF EXISTS old_state;
+   ALTER TABLE subscription_audit_log DROP COLUMN IF EXISTS old_values;
+   ALTER TABLE task_messages DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE task_messages DROP COLUMN IF EXISTS reply_to_id_old;
+   ALTER TABLE task_messages DROP COLUMN IF EXISTS sender_id_old;
+   ALTER TABLE task_messages DROP COLUMN IF EXISTS task_id_old;
+   ALTER TABLE task_request_history DROP COLUMN IF EXISTS old_value;
+   ALTER TABLE task_requests DROP COLUMN IF EXISTS converted_task_id_old;
+   ALTER TABLE task_requests DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE thread_members DROP COLUMN IF EXISTS thread_id_old;
+   ALTER TABLE thread_messages DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE thread_messages DROP COLUMN IF EXISTS reply_to_id_old;
+   ALTER TABLE thread_messages DROP COLUMN IF EXISTS thread_id_old;
+   ALTER TABLE threads DROP COLUMN IF EXISTS id_old;
+   ALTER TABLE users DROP COLUMN IF EXISTS legacy_id;
+   ALTER TABLE users_enhanced DROP COLUMN IF EXISTS legacy_id;
+   ALTER TABLE users_enhanced DROP COLUMN IF EXISTS legacy_role;
+   ALTER TABLE utr_correction_history DROP COLUMN IF EXISTS old_utr;
+   ALTER TABLE vendor_audit_logs DROP COLUMN IF EXISTS old_value;
+   ALTER TABLE workflow_tasks DROP COLUMN IF EXISTS approver_id_old;
+   ALTER TABLE workflow_tasks DROP COLUMN IF EXISTS assignee_id_old;
+   ALTER TABLE workflow_tasks DROP COLUMN IF EXISTS creator_id_old;
+   ALTER TABLE workflow_tasks DROP COLUMN IF EXISTS id_old;
+
+3. FIX FOREIGN KEY MISMATCHES:
+   -- Fix audit_logs.session_id → user_sessions.id
+   -- Fix subscription_page_features.page_code → pages_master.page_code
+
+================================================================================
+AUDIT SUMMARY
+================================================================================
+
+📊 Total Tables: 316
+📌 UUID columns: 395
+⚠️  INTEGER ID columns needing migration: 65
+🗑️  Legacy columns to remove: 55
+🔗 Mismatched FK types: 2
+📋 Tables without PK: 9
+🔴 Critical tables with issues: 9
+    
+
+📁 Detailed audit saved to: ./scripts/uuid-migration-audit-result.json

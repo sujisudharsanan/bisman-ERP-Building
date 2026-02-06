@@ -1,0 +1,774 @@
+{
+  "timestamp": "2026-02-06T11:52:40.513Z",
+  "totalIssues": 97,
+  "byFile": {
+    "my-backend/app.js": [
+      {
+        "file": "my-backend/app.js",
+        "line": 4874,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userIdNum = parseInt(String(userId), 10);"
+      }
+    ],
+    "my-backend/controllers/qaController.js": [
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 332,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE t.id = ${parseInt(id)} AND (t.tenant_id = ${tenantId} OR t.tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 408,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 434,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 639,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE i.id = ${parseInt(id)} AND (i.tenant_id = ${tenantId} OR i.tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 676,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE h.issue_id = ${parseInt(id)} AND (i.tenant_id = ${tenantId} OR i.tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 744,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "SELECT * FROM qa_issues WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 776,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 782,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "await logIssueChange(prisma, parseInt(id), userId, change.field, change.oldValue, change.newValue, n"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 787,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "await logIssueChange(prisma, parseInt(id), userId, 'comment', null, null, note, git_commit || null, "
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 814,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "SELECT id FROM qa_issues WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NUL"
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 821,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "await logIssueChange(prisma, parseInt(id), userId, 'comment', null, null, note, git_commit || null, "
+      },
+      {
+        "file": "my-backend/controllers/qaController.js",
+        "line": 841,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE id = ${parseInt(id)} AND (tenant_id = ${tenantId} OR tenant_id IS NULL)"
+      }
+    ],
+    "my-backend/controllers/superAdminController.js": [
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 108,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const result = await superAdminService.updateRole(parseInt(roleId), roleData, adminUserId, adminUser"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 122,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const result = await superAdminService.deleteRole(parseInt(roleId), adminUserId, adminUsername)"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 152,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const result = await superAdminService.updateRoute(parseInt(routeId), routeData, adminUserId, adminU"
+      },
+      {
+        "file": "my-backend/controllers/superAdminController.js",
+        "line": 166,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const result = await superAdminService.deleteRoute(parseInt(routeId), adminUserId, adminUsername)"
+      }
+    ],
+    "my-backend/controllers/taskController.js": [
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 121,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.id as creator_legacy_id, creator.username as creator_name, creator.email as creator_email,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 393,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 524,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 683,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.id as creator_uuid, creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 1092,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 1168,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 3203,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskController.js",
+        "line": 3317,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      }
+    ],
+    "my-backend/controllers/taskControllerV2.js": [
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 144,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 277,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      },
+      {
+        "file": "my-backend/controllers/taskControllerV2.js",
+        "line": 441,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name,"
+      }
+    ],
+    "my-backend/middleware/businessLevelProtection.js": [
+      {
+        "file": "my-backend/middleware/businessLevelProtection.js",
+        "line": 43,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const targetUserId = parseInt(req.params.userId || req.params.id || req.body.userId);"
+      }
+    ],
+    "my-backend/middleware/planModuleAccessMiddleware.js": [
+      {
+        "file": "my-backend/middleware/planModuleAccessMiddleware.js",
+        "line": 314,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "user_id: req.user?.id ? Number(req.user.id) : null,"
+      }
+    ],
+    "my-backend/middleware/rbacMiddleware.js": [
+      {
+        "file": "my-backend/middleware/rbacMiddleware.js",
+        "line": 527,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "WHERE ur.user_id = ${parseInt(userId)}"
+      }
+    ],
+    "my-backend/middleware/rlsMiddleware.js": [
+      {
+        "file": "my-backend/middleware/rlsMiddleware.js",
+        "line": 251,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${duration}::INTEGER"
+      }
+    ],
+    "my-backend/modules/chat/routes/thread-messages.js": [
+      {
+        "file": "my-backend/modules/chat/routes/thread-messages.js",
+        "line": 30,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const legacyId = parseInt(req.user.legacy_id, 10);"
+      },
+      {
+        "file": "my-backend/modules/chat/routes/thread-messages.js",
+        "line": 39,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const parsed = parseInt(req.user.id, 10);"
+      }
+    ],
+    "my-backend/modules/chat/socket/presence.js": [
+      {
+        "file": "my-backend/modules/chat/socket/presence.js",
+        "line": 37,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "where: { userId: Number(userId) },"
+      }
+    ],
+    "my-backend/routes/admin/userUsage.js": [
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 38,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      },
+      {
+        "file": "my-backend/routes/admin/userUsage.js",
+        "line": 306,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      }
+    ],
+    "my-backend/routes/aiAnalyticsRoute.js": [
+      {
+        "file": "my-backend/routes/aiAnalyticsRoute.js",
+        "line": 195,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const params = userRole !== 'enterprise-admin' && tenantId ? [parseInt(id), tenantId] : [parseInt(id"
+      }
+    ],
+    "my-backend/routes/aiRoute.js": [
+      {
+        "file": "my-backend/routes/aiRoute.js",
+        "line": 278,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "`, parseInt(id), userId);"
+      }
+    ],
+    "my-backend/routes/approvalFlowRoutes.js": [
+      {
+        "file": "my-backend/routes/approvalFlowRoutes.js",
+        "line": 335,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "{ excludeUserId: excludeUserId ? parseInt(excludeUserId, 10) : null }"
+      }
+    ],
+    "my-backend/routes/audit.js": [
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 60,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "params.push(parseInt(user_id));"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 303,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "params.push(parseInt(user_id));"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 390,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${user_id || null}::INTEGER,"
+      },
+      {
+        "file": "my-backend/routes/audit.js",
+        "line": 580,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${req.user?.id || null}::INTEGER,"
+      }
+    ],
+    "my-backend/routes/clarificationRoutes.js": [
+      {
+        "file": "my-backend/routes/clarificationRoutes.js",
+        "line": 29,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "id: typeof user.id === 'string' ? parseInt(user.id) : user.id,"
+      }
+    ],
+    "my-backend/routes/clientManagement.js": [
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 40,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const superAdminId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 44,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.supe"
+      },
+      {
+        "file": "my-backend/routes/clientManagement.js",
+        "line": 51,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.supe"
+      }
+    ],
+    "my-backend/routes/enterprise-admin-Users.js": [
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 126,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 216,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 297,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      },
+      {
+        "file": "my-backend/routes/enterprise-admin-Users.js",
+        "line": 517,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.params.userId);"
+      }
+    ],
+    "my-backend/routes/internal-operations.js": [
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 343,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const user = await prisma.users_enhanced.findUnique({ where: { id: parseInt(userId) } });"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 358,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "where: { id: parseInt(userId) },"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 369,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "recordId: parseInt(userId),"
+      },
+      {
+        "file": "my-backend/routes/internal-operations.js",
+        "line": 886,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "if (userId) where.user_id = parseInt(userId);"
+      }
+    ],
+    "my-backend/routes/permissions.js": [
+      {
+        "file": "my-backend/routes/permissions.js",
+        "line": 159,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.query.userId) || req.user.id;"
+      }
+    ],
+    "my-backend/routes/permissionsRoutes.js": [
+      {
+        "file": "my-backend/routes/permissionsRoutes.js",
+        "line": 196,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "let userIdInt = parseInt(userId);"
+      },
+      {
+        "file": "my-backend/routes/permissionsRoutes.js",
+        "line": 341,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userIdInt = parseInt(userId);"
+      }
+    ],
+    "my-backend/routes/privilegeRoutes.js": [
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 103,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "assignee_id: parseInt(superAdminUserId),"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 180,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "let userIdInt = parseInt(userId);"
+      },
+      {
+        "file": "my-backend/routes/privilegeRoutes.js",
+        "line": 1035,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userId = parseInt(req.query.userId);"
+      }
+    ],
+    "my-backend/routes/reportsRoutes.js": [
+      {
+        "file": "my-backend/routes/reportsRoutes.js",
+        "line": 80,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "assignee_id: parseInt(superAdminUserId),"
+      }
+    ],
+    "my-backend/routes/taskRoutes.js": [
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 69,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "params.push(parseInt(creator_id));"
+      },
+      {
+        "file": "my-backend/routes/taskRoutes.js",
+        "line": 148,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const userIdInt = parseInt(userId, 10);"
+      }
+    ],
+    "my-backend/routes/tasks.js": [
+      {
+        "file": "my-backend/routes/tasks.js",
+        "line": 155,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "WHERE (t.assignee_id = ${userId}::integer OR t.creator_id = ${userId}::integer)"
+      }
+    ],
+    "my-backend/routes/usageEvents.js": [
+      {
+        "file": "my-backend/routes/usageEvents.js",
+        "line": 14,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const created = await prisma.clientUsageEvent.create({ data: { event_type, module_id: module_id ? Nu"
+      }
+    ],
+    "my-backend/routes/welcomeRoutes.js": [
+      {
+        "file": "my-backend/routes/welcomeRoutes.js",
+        "line": 255,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const clientId = typeof tenantIdValue === 'string' ? parseInt(tenantIdValue, 10) : tenantIdValue;"
+      }
+    ],
+    "my-backend/scripts/sync-common-pages.js": [
+      {
+        "file": "my-backend/scripts/sync-common-pages.js",
+        "line": 36,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const specificUserId = userIdArg ? parseInt(userIdArg.split('=')[1]) : null;"
+      }
+    ],
+    "my-backend/services/PaymentWorkflowServiceV2.js": [
+      {
+        "file": "my-backend/services/PaymentWorkflowServiceV2.js",
+        "line": 603,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "async function generatePaymentRequestNumber(tenantId) {"
+      },
+      {
+        "file": "my-backend/services/PaymentWorkflowServiceV2.js",
+        "line": 725,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const requestNumber = await generatePaymentRequestNumber(tenantId);"
+      }
+    ],
+    "my-backend/services/SettlementService.js": [
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 940,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const settlementNumber = await generateSettlementNumber(tenantId);"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 1720,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "async function generateSettlementNumber(tenantId) {"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 1724,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "`SELECT generate_settlement_number('${tenantId}'::uuid) as num`"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 294,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "SELECT check_optimistic_lock(${tableName}::TEXT, ${id}::UUID, ${expectedVersion}::INTEGER)"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 400,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${validityMinutes}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 490,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "SELECT COUNT(*)::INTEGER AS count"
+      },
+      {
+        "file": "my-backend/services/SettlementService.js",
+        "line": 598,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${options.priority || 5}::INTEGER,"
+      }
+    ],
+    "my-backend/services/ai/beyTools.js": [
+      {
+        "file": "my-backend/services/ai/beyTools.js",
+        "line": 95,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name, creator.first_name as creator_first,"
+      },
+      {
+        "file": "my-backend/services/ai/beyTools.js",
+        "line": 424,
+        "pattern": "Accessing creator.username (may not exist)",
+        "fix": "Use creator.email or COALESCE(creator.first_name, creator.username, creator.email)",
+        "code": "creator.username as creator_name, creator.first_name as creator_first,"
+      }
+    ],
+    "my-backend/services/auditService.js": [
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 40,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${req.user?.id || null}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 42,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${req.user?.super_admin_id || req.user?.superAdminId || null}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 72,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${userId}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 153,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${executionMs}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 198,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${executionTimeMs}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 199,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${rowsAffected}::INTEGER,"
+      },
+      {
+        "file": "my-backend/services/auditService.js",
+        "line": 202,
+        "pattern": "SQL cast to INTEGER for ID",
+        "fix": "Remove cast, use UUID comparison directly",
+        "code": "${userId}::INTEGER,"
+      }
+    ],
+    "my-backend/services/authorizationService.js": [
+      {
+        "file": "my-backend/services/authorizationService.js",
+        "line": 58,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "where: { user_id: user.legacy_id || parseInt(userId) },"
+      }
+    ],
+    "my-backend/services/effectiveAccessService.js": [
+      {
+        "file": "my-backend/services/effectiveAccessService.js",
+        "line": 882,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const numericUserId = parseInt(userId, 10);"
+      }
+    ],
+    "my-backend/services/privilegeService.js": [
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 363,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "user_id: Number(userId),"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 193,
+        "pattern": "Prisma where with Number() conversion",
+        "fix": "Pass UUID string directly",
+        "code": "where: { id: Number(roleId) },"
+      },
+      {
+        "file": "my-backend/services/privilegeService.js",
+        "line": 224,
+        "pattern": "Prisma where with Number() conversion",
+        "fix": "Pass UUID string directly",
+        "code": "where: { id: Number(trimmed) }"
+      }
+    ],
+    "my-backend/services/taskRequestService.js": [
+      {
+        "file": "my-backend/services/taskRequestService.js",
+        "line": 92,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "const numericId = parseInt(userId, 10);"
+      }
+    ],
+    "my-backend/socket/presence.js": [
+      {
+        "file": "my-backend/socket/presence.js",
+        "line": 37,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "where: { userId: Number(userId) },"
+      }
+    ],
+    "my-backend/src/middleware/planModuleAccess.ts": [
+      {
+        "file": "my-backend/src/middleware/planModuleAccess.ts",
+        "line": 307,
+        "pattern": "Number() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "user_id: req.user?.id ? Number(req.user.id) : null,"
+      }
+    ],
+    "my-backend/src/routes/clientManagement.ts": [
+      {
+        "file": "my-backend/src/routes/clientManagement.ts",
+        "line": 302,
+        "pattern": "Prisma where with Number() conversion",
+        "fix": "Pass UUID string directly",
+        "code": "const u = await prismaAny.user.findUnique({ where: { id: Number(uid) } }).catch(() => null);"
+      }
+    ],
+    "my-backend/src/routes/ultimateChatRoutes.ts": [
+      {
+        "file": "my-backend/src/routes/ultimateChatRoutes.ts",
+        "line": 74,
+        "pattern": "parseInt() used on UUID field",
+        "fix": "Use ensureUUID() from utils/uuid-helpers.js instead",
+        "code": "(req as AuthenticatedRequest).userId = typeof userId === 'string' ? parseInt(userId, 10) : userId;"
+      }
+    ]
+  },
+  "byPattern": {
+    "parseInt() used on UUID field": 55,
+    "Accessing creator.username (may not exist)": 13,
+    "Number() used on UUID field": 11,
+    "SQL cast to INTEGER for ID": 15,
+    "Prisma where with Number() conversion": 3
+  }
+}

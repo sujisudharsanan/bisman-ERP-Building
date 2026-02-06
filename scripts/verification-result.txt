@@ -1,0 +1,17 @@
+================================================================================
+UUID MIGRATION VERIFICATION SUITE
+================================================================================
+Database: postgresql://postgres:****@hopper.proxy.rlwy.net:30204/railway
+Timestamp: 2026-02-06T11:47:04.034Z
+
+📋 SCHEMA TYPE VALIDATION
+
+  ❌ Primary Keys: branches.id is int4, should be uuid
+  ❌ Primary Keys: workflows.id is int4, should be uuid
+  ✅ Tenant IDs: All critical tenant_id columns are UUID
+  ✅ Legacy Columns: No legacy columns found in active tables
+  ❌ Foreign Keys: audit_logs.session_id (varchar) → user_sessions.id (int4)
+  ❌ Foreign Keys: subscription_page_features.page_code (text) → pages_master.page_code (varchar)
+
+📋 DATA INTEGRITY VALIDATION
+

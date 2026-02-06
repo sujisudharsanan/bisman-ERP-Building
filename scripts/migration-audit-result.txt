@@ -1,0 +1,54 @@
+
+================================================================================
+UUID MIGRATION EXECUTOR
+================================================================================
+Database: postgresql://postgres:****@hopper.proxy.rlwy.net:30204/railway
+Timestamp: 2026-02-06T11:43:31.275Z
+Dry Run: false
+
+📋 [INFO] Starting Phase 1: Comprehensive Audit
+⚠️ [WARN] users_enhanced.super_admin_id is int4, needs UUID
+⚠️ [WARN] effective_access_cache.user_id is text, needs UUID
+⚠️ [WARN] thread_messages.senderId is int4, needs UUID
+⚠️ [WARN] thread_members.userId is int4, needs UUID
+⚠️ [WARN] approvals.approverId is int4, needs UUID
+⚠️ [WARN] approver_configurations.userId is int4, needs UUID
+⚠️ [WARN] assistant_memory.userId is int4, needs UUID
+⚠️ [WARN] support_tickets.assigned_to is int4, needs UUID
+⚠️ [WARN] task_reviews.sender_id is int4, needs UUID
+⚠️ [WARN] payment_activity_logs.userId is int4, needs UUID
+⚠️ [WARN] api_keys.client_id is int4, needs UUID
+⚠️ [WARN] clients.super_admin_id is int4, needs UUID
+⚠️ [WARN] module_assignments.super_admin_id is int4, needs UUID
+⚠️ [WARN] audit_logs.super_admin_id is int4, needs UUID
+⚠️ [WARN] effective_access_cache.tenant_id is varchar, needs UUID
+⚠️ [WARN] tenant_usage.tenant_id is varchar, needs UUID
+⚠️ [WARN] admin_page_assignments.tenant_id is varchar, needs UUID
+⚠️ [WARN] admin_role_grants.tenant_id is varchar, needs UUID
+⚠️ [WARN] subscription_access_audit_log.tenant_id is varchar, needs UUID
+⚠️ [WARN] Legacy column found: chat_conversations.id_old
+⚠️ [WARN] Legacy column found: chat_conversations.user_id_old
+⚠️ [WARN] Legacy column found: chat_messages.id_old
+⚠️ [WARN] Legacy column found: chat_messages.conversation_id_old
+⚠️ [WARN] Legacy column found: chat_messages.user_id_old
+⚠️ [WARN] Legacy column found: task_messages.id_old
+⚠️ [WARN] Legacy column found: task_messages.reply_to_id_old
+⚠️ [WARN] Legacy column found: task_messages.sender_id_old
+⚠️ [WARN] Legacy column found: task_messages.task_id_old
+⚠️ [WARN] Legacy column found: task_requests.id_old
+⚠️ [WARN] Legacy column found: task_requests.converted_task_id_old
+⚠️ [WARN] Legacy column found: thread_messages.id_old
+⚠️ [WARN] Legacy column found: thread_messages.reply_to_id_old
+⚠️ [WARN] Legacy column found: thread_messages.thread_id_old
+⚠️ [WARN] Legacy column found: thread_members.thread_id_old
+⚠️ [WARN] Legacy column found: threads.id_old
+⚠️ [WARN] Legacy column found: workflow_tasks.id_old
+⚠️ [WARN] Legacy column found: workflow_tasks.approver_id_old
+⚠️ [WARN] Legacy column found: workflow_tasks.assignee_id_old
+⚠️ [WARN] Legacy column found: workflow_tasks.creator_id_old
+⚠️ [WARN] Legacy column found: rbac_user_permissions.user_id_old
+📋 [INFO] === AUDIT SUMMARY ===
+📋 [INFO] Integer columns needing migration: 14
+📋 [INFO] VARCHAR columns needing migration: 5
+📋 [INFO] Legacy columns to remove: 21
+📋 [INFO] Missing constraints: 0

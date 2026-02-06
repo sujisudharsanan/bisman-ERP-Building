@@ -1,0 +1,1012 @@
+{
+  "timestamp": "2026-02-06T11:37:48.249Z",
+  "summary": {
+    "totalTables": 316,
+    "uuidColumns": 395,
+    "integerColumnsToMigrate": 65,
+    "legacyColumnsToRemove": 55,
+    "mismatchedFKs": 2,
+    "tablesWithoutPK": 9,
+    "criticalTablesWithIssues": 9
+  },
+  "integerColumnsToMigrate": [
+    {
+      "table_name": "_backup_053_thread_messages",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "_legacy_users_backup_20260106",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "api_keys",
+      "column_name": "client_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approval_stage_instances",
+      "column_name": "approver_level",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approval_stage_instances",
+      "column_name": "creator_level",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approval_stages",
+      "column_name": "min_approvers",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "1",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approval_workflow_stages",
+      "column_name": "min_approver_level_above_creator",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "1",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approvals",
+      "column_name": "approverId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approver_configurations",
+      "column_name": "userId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "approver_selection_logs",
+      "column_name": "approverWorkload",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "assistant_memory",
+      "column_name": "userId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_dml",
+      "column_name": "client_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2025_12",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2026_01",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2026_02",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2026_03",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2026_04",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p2026_05",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_p_default",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "audit_logs_partitioned",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "client_daily_usage",
+      "column_name": "active_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "current_user_count",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "custom_tenant_plan_configurations",
+      "column_name": "max_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "10",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "fallback_stats_hourly",
+      "column_name": "affected_users",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "master_subscription_plans",
+      "column_name": "max_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "5",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "module_assignments",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "payment_activity_logs",
+      "column_name": "userId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "payment_requests",
+      "column_name": "approver_level",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "qa_issues",
+      "column_name": "assigned_to",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "qa_test_tasks",
+      "column_name": "assigned_to",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "qa_test_tasks",
+      "column_name": "created_by",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "resource_consumption",
+      "column_name": "active_users_30d",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "resource_consumption",
+      "column_name": "total_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "subscription_governance_limits",
+      "column_name": "max_active_tasks_per_user",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "100",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "subscription_governance_limits",
+      "column_name": "max_tasks_per_day_per_tenant",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "500",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "subscription_governance_limits",
+      "column_name": "max_tasks_per_day_per_user",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": "50",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "subscription_plans",
+      "column_name": "max_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "5",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "support_tickets",
+      "column_name": "assigned_to",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "task_reviews",
+      "column_name": "sender_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "tenant_usage",
+      "column_name": "active_users",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_members",
+      "column_name": "userId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2025_09",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2025_10",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2025_11",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2025_12",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_01",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_02",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_03",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_04",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_05",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_06",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_07",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_08",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_09",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_10",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p2026_11",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_p_default",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "thread_messages_partitioned",
+      "column_name": "senderId",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "unregistered_route_access",
+      "column_name": "tenant_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "users_enhanced",
+      "column_name": "super_admin_id",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "v_table_classification_summary",
+      "column_name": "missing_tenant_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    },
+    {
+      "table_name": "v_table_classification_summary",
+      "column_name": "user_visible_count",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null,
+      "type_category": "INTEGER"
+    }
+  ],
+  "legacyColumnsToRemove": [
+    {
+      "table_name": "ai_usage_logs",
+      "column_name": "endpoint",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "asset_history",
+      "column_name": "old_value",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "audit_logs",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_dml",
+      "column_name": "old_data",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2025_12",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2026_01",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2026_02",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2026_03",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2026_04",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p2026_05",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_p_default",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "audit_logs_partitioned",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "chat_conversations",
+      "column_name": "id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "chat_conversations",
+      "column_name": "user_id_old",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "chat_messages",
+      "column_name": "conversation_id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "chat_messages",
+      "column_name": "id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "chat_messages",
+      "column_name": "user_id_old",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "clarification_audit",
+      "column_name": "old_status",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "contract_audit_logs",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "custom_plan_audit_log",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "custom_tenant_feature_controls",
+      "column_name": "approval_threshold",
+      "data_type": "numeric",
+      "udt_name": "numeric"
+    },
+    {
+      "table_name": "master_subscription_plans",
+      "column_name": "cfo_approval_threshold",
+      "data_type": "numeric",
+      "udt_name": "numeric"
+    },
+    {
+      "table_name": "micro_unlock_audit_log",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "payment_activity_logs",
+      "column_name": "oldStatus",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "plan_change_audit_log",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "plan_feature_controls",
+      "column_name": "approval_threshold",
+      "data_type": "numeric",
+      "udt_name": "numeric"
+    },
+    {
+      "table_name": "plan_feature_controls_draft",
+      "column_name": "approval_threshold",
+      "data_type": "numeric",
+      "udt_name": "numeric"
+    },
+    {
+      "table_name": "qa_issue_history",
+      "column_name": "old_value",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "rate_limit_violations",
+      "column_name": "endpoint",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "rbac_user_permissions",
+      "column_name": "user_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "reconciliation_audit_log",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "review_audit",
+      "column_name": "old_status",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "subscription_access_audit_log",
+      "column_name": "old_state",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "subscription_audit_log",
+      "column_name": "old_values",
+      "data_type": "jsonb",
+      "udt_name": "jsonb"
+    },
+    {
+      "table_name": "task_messages",
+      "column_name": "id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "task_messages",
+      "column_name": "reply_to_id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "task_messages",
+      "column_name": "sender_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "task_messages",
+      "column_name": "task_id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "task_request_history",
+      "column_name": "old_value",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "task_requests",
+      "column_name": "converted_task_id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "task_requests",
+      "column_name": "id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    },
+    {
+      "table_name": "thread_members",
+      "column_name": "thread_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "thread_messages",
+      "column_name": "id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "thread_messages",
+      "column_name": "reply_to_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "thread_messages",
+      "column_name": "thread_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "threads",
+      "column_name": "id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "users",
+      "column_name": "legacy_id",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "users_enhanced",
+      "column_name": "legacy_id",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "users_enhanced",
+      "column_name": "legacy_role",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "utr_correction_history",
+      "column_name": "old_utr",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "table_name": "vendor_audit_logs",
+      "column_name": "old_value",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "workflow_tasks",
+      "column_name": "approver_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "workflow_tasks",
+      "column_name": "assignee_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "workflow_tasks",
+      "column_name": "creator_id_old",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "table_name": "workflow_tasks",
+      "column_name": "id_old",
+      "data_type": "integer",
+      "udt_name": "int4"
+    }
+  ],
+  "mismatchedForeignKeys": [
+    {
+      "constraint_name": "audit_logs_session_id_fkey",
+      "table_name": "audit_logs",
+      "column_name": "session_id",
+      "foreign_table_name": "user_sessions",
+      "foreign_column_name": "id",
+      "source_type": "character varying",
+      "target_type": "integer"
+    },
+    {
+      "constraint_name": "fk_spf_page",
+      "table_name": "subscription_page_features",
+      "column_name": "page_code",
+      "foreign_table_name": "pages_master",
+      "foreign_column_name": "page_code",
+      "source_type": "text",
+      "target_type": "character varying"
+    }
+  ],
+  "criticalTableIssues": [
+    {
+      "table": "users_enhanced",
+      "issues": [
+        "super_admin_id is int4, should be uuid"
+      ]
+    },
+    {
+      "table": "chat_messages",
+      "issues": [
+        "Legacy column: id_old",
+        "Legacy column: conversation_id_old",
+        "Legacy column: user_id_old"
+      ]
+    },
+    {
+      "table": "workflows",
+      "issues": [
+        "created_by is text, should be uuid",
+        "updated_by is text, should be uuid"
+      ]
+    },
+    {
+      "table": "audit_logs",
+      "issues": [
+        "user_id is text, should be uuid",
+        "super_admin_id is int4, should be uuid"
+      ]
+    },
+    {
+      "table": "tenant_usage",
+      "issues": [
+        "tenant_id is varchar, should be uuid"
+      ]
+    },
+    {
+      "table": "admin_page_assignments",
+      "issues": [
+        "tenant_id is varchar, should be uuid"
+      ]
+    },
+    {
+      "table": "admin_role_grants",
+      "issues": [
+        "tenant_id is varchar, should be uuid"
+      ]
+    },
+    {
+      "table": "effective_access_cache",
+      "issues": [
+        "user_id is text, should be uuid",
+        "tenant_id is varchar, should be uuid"
+      ]
+    },
+    {
+      "table": "subscription_access_audit_log",
+      "issues": [
+        "tenant_id is varchar, should be uuid"
+      ]
+    }
+  ]
+}

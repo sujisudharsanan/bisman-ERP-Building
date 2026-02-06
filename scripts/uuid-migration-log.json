@@ -1,0 +1,21 @@
+{
+  "migrationId": 1770379135761,
+  "dryRun": false,
+  "entries": [
+    {
+      "timestamp": "2026-02-06T11:58:53.656Z",
+      "level": "INFO",
+      "message": "Starting Phase 4: Validation",
+      "data": null
+    },
+    {
+      "timestamp": "2026-02-06T11:58:55.760Z",
+      "level": "ERROR",
+      "message": "Migration failed",
+      "data": {
+        "error": "operator does not exist: uuid = text",
+        "stack": "error: operator does not exist: uuid = text\n    at /Users/abhi/Desktop/BISMAN ERP/node_modules/pg/lib/client.js:545:17\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async query (/Users/abhi/Desktop/BISMAN ERP/scripts/uuid-migration-execute.js:109:20)\n    at async phase4Validate (/Users/abhi/Desktop/BISMAN ERP/scripts/uuid-migration-execute.js:434:23)\n    at async main (/Users/abhi/Desktop/BISMAN ERP/scripts/uuid-migration-execute.js:567:7)"
+      }
+    }
+  ]
+}
