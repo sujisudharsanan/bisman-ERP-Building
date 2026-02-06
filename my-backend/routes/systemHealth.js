@@ -620,7 +620,7 @@ router.get('/', async (req, res) => {
     let latencySeries = [];
     let errorRateSeries = [];
     try {
-      const recentSamples = await prisma.systemMetricSample.findMany({
+      const recentSamples = await prisma.system_metric_samples.findMany({
         orderBy: { collected_at: 'desc' },
         take: 24,
       });

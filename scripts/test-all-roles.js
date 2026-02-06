@@ -6,7 +6,7 @@ async function testAllRoles() {
     console.log('=== TESTING ALL ROLES - COMPLETE VERIFICATION ===\n');
     
     // Get all roles from roles table
-    const roles = await prisma.role.findMany({
+    const roles = await prisma.rbac_roles.findMany({
       orderBy: { name: 'asc' }
     });
     
@@ -19,14 +19,14 @@ async function testAllRoles() {
       console.log('='.repeat(60));
       
       // Count users with this role
-      const userCount = await prisma.user.count({
+      const userCount = await prisma.users_enhanced.count({
         where: { role: role.name }
       });
       
       console.log(`\n1. User Count: ${userCount} users have role "${role.name}"`);
       
       // Get actual users
-      const users = await prisma.user.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: { role: role.name },
         select: {
           id: true,
@@ -64,7 +64,7 @@ async function testAllRoles() {
     
     const summary = await Promise.all(
       roles.map(async (role) => {
-        const count = await prisma.user.count({ where: { role: role.name } });
+        const count = await prisma.users_enhanced.count({ where: { role: role.name } });
         return { id: role.id, name: role.name, userCount: count };
       })
     );
@@ -75,13 +75,13 @@ async function testAllRoles() {
       console.log(`  ${status} ${s.name} (ID: ${s.id}): ${s.userCount} users`);
     });
     
-    const totalUsers = await prisma.user.count();
+    const totalUsers = await prisma.users_enhanced.count();
     const totalRoles = roles.length;
     
     console.log(`\nTotal: ${totalRoles} roles, ${totalUsers} users`);
     
     // Check for orphaned users (users with roles not in roles table)
-    const allUsers = await prisma.user.findMany({
+    const allUsers = await prisma.users_enhanced.findMany({
       select: { role: true },
       distinct: ['role']
     });

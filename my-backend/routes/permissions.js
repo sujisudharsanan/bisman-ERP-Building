@@ -111,18 +111,18 @@ router.get('/check-page', authenticate, async (req, res) => {
       }
     }
 
-    // Regular users: Check user_pages table
-    const userPage = await prisma.userPage.findFirst({
-      where: {
-        user_id: userId,
-        page_key: pageId
-      }
-    });
+    // Regular users: Check role_page_access table (userPage table doesn't exist)
+    const [pageAccess] = await prisma.$queryRaw`
+      SELECT 1 FROM role_page_access rpa
+      INNER JOIN users_enhanced u ON u.role = rpa.role_name
+      WHERE u.id = ${userId}::uuid AND rpa.page_key = ${pageId}
+      LIMIT 1
+    `;
 
     // Also check for common pages
     const isCommonPage = pageId.startsWith('common-') || pageId === 'about-me';
 
-    if (userPage || isCommonPage) {
+    if (pageAccess || isCommonPage) {
       console.log(`✅ [ACCESS GRANTED] User has access to: ${pageId}`);
       return res.json({ 
         hasAccess: true,

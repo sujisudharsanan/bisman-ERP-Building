@@ -125,7 +125,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     // If rbac_roles is empty, try the simple roles table
     if (roles.length === 0) {
       try {
-        const simpleRoles = await prisma.role.findMany();
+        const simpleRoles = await prisma.rbac_roles.findMany();
         console.log(`[RolesUsersReport] Found ${simpleRoles.length} roles in roles table`);
         // Convert to rbac_roles format
         roles = simpleRoles.map(r => ({
@@ -412,7 +412,7 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     // If rbac_roles is empty, try the simple roles table
     if (roles.length === 0) {
       try {
-        const simpleRoles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
+        const simpleRoles = await prisma.rbac_roles.findMany({ orderBy: { name: 'asc' } });
         // Convert to rbac_roles format
         roles = simpleRoles.map(r => ({
           id: r.id,

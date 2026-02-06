@@ -50,10 +50,10 @@ module.exports = {
       tags: Array.isArray(payload.tags) ? payload.tags : [],
     };
 
-    const event = await prisma.securityEvent.create({ data });
+    const event = await prisma.security_events.create({ data });
 
     // Audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: payload.actor_id || null,
         action: 'CREATE',
@@ -80,7 +80,7 @@ module.exports = {
     if (filters.severity) where.severity = normalizeSeverity(filters.severity);
     if (filters.status) where.status = filters.status;
 
-    const events = await prisma.securityEvent.findMany({
+    const events = await prisma.security_events.findMany({
       where,
       orderBy: { occurred_at: 'desc' },
       include: { assignee: { select: { id: true, email: true, username: true } } }
@@ -137,7 +137,7 @@ module.exports = {
   },
 
   async getAudit(options = {}) {
-    const rows = await prisma.auditLog.findMany({
+    const rows = await prisma.audit_logs.findMany({
       where: { entity_type: 'SECURITY_EVENT' },
       orderBy: { created_at: 'desc' },
       take: options.limit || 100,
@@ -150,12 +150,12 @@ module.exports = {
       return { openCount: 0, resolvedCount: 0, mtta: null, mttr: null, slaCompliance: null };
     }
     const [openCount, resolvedCount] = await Promise.all([
-      prisma.securityEvent.count({ where: { status: { in: ['open', 'investigating'] } } }),
-      prisma.securityEvent.count({ where: { status: { in: ['resolved', 'verified', 'closed'] } } }),
+      prisma.security_events.count({ where: { status: { in: ['open', 'investigating'] } } }),
+      prisma.security_events.count({ where: { status: { in: ['resolved', 'verified', 'closed'] } } }),
     ]);
 
     // MTTA/MTTR simplified (requires first resolution timestamps in full impl)
-    const recent = await prisma.securityEvent.findMany({
+    const recent = await prisma.security_events.findMany({
       orderBy: { occurred_at: 'desc' },
       take: 200,
       select: { occurred_at: true, resolved_at: true }

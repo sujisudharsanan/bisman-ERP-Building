@@ -107,8 +107,8 @@ async function logDenial(req, context, reason, details = {}) {
   console.error('🚫 RBAC DENIAL:', JSON.stringify(logEntry));
 
   try {
-    if (prisma && prisma.auditLog) {
-      await prisma.auditLog.create({
+    if (prisma && prisma.audit_logs) {
+      await prisma.audit_logs.create({
         data: {
           action: 'RBAC_DENIAL',
           entityType: 'ACCESS_CONTROL',

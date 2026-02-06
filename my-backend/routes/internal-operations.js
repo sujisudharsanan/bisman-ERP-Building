@@ -149,7 +149,7 @@ async function logInternalAction(userId, action, details, options = {}) {
   const prisma = getPrisma();
   
   try {
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: userId,
         action: `INTERNAL:${action}`,
@@ -889,7 +889,7 @@ router.get('/audit-logs', requireInternalPermission('view:audit_logs'), async (r
     if (endDate) where.created_at = { ...where.created_at, lte: new Date(endDate) };
 
     const [logs, total] = await Promise.all([
-      prisma.auditLog.findMany({
+      prisma.audit_logs.findMany({
         where,
         orderBy: { created_at: 'desc' },
         skip: (parseInt(page) - 1) * parseInt(limit),
@@ -900,7 +900,7 @@ router.get('/audit-logs', requireInternalPermission('view:audit_logs'), async (r
           }
         }
       }),
-      prisma.auditLog.count({ where })
+      prisma.audit_logs.count({ where })
     ]);
 
     res.json({

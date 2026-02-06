@@ -5,7 +5,7 @@ const prisma = getPrisma();
 async function seedHubInchargePermissions() {
   try {
     // Find Hub Incharge user
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users_enhanced.findFirst({
       where: {
         OR: [
           { username: 'demo_hub_incharge' },

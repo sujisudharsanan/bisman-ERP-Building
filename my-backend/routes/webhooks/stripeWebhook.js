@@ -397,7 +397,7 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
   const tenantId = paymentIntent.metadata?.tenantId;
   if (tenantId) {
     const prisma = require('../../lib/prisma');
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         last_payment_at: new Date(),
@@ -423,7 +423,7 @@ async function handleSubscriptionCreated(subscription) {
   const prisma = require('../../lib/prisma');
   const plan = subscription.metadata?.plan || 'pro';
 
-  await prisma.tenant.update({
+  await prisma.clients.update({
     where: { id: tenantId },
     data: {
       stripe_subscription_id: subscription.id,
@@ -441,7 +441,7 @@ async function handleSubscriptionCreated(subscription) {
   await stripeService.updateTenantQuotas(tenantId, plan);
 
   // Audit log
-  await prisma.auditLog.create({
+  await prisma.audit_logs.create({
     data: {
       tenant_id: tenantId,
       action: 'SUBSCRIPTION_CREATED_WEBHOOK',
@@ -472,7 +472,7 @@ async function handleTrialWillEnd(subscription) {
   const emailService = require('../../services/email/emailService');
 
   // Get tenant and admin
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId },
     include: {
       users: {
@@ -528,7 +528,7 @@ async function handleCheckoutCompleted(session) {
 
   // Update tenant with customer ID if not set
   if (session.customer) {
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         stripe_customer_id: session.customer,
@@ -543,7 +543,7 @@ async function handleCheckoutCompleted(session) {
   }
 
   // Audit log
-  await prisma.auditLog.create({
+  await prisma.audit_logs.create({
     data: {
       tenant_id: tenantId,
       action: 'CHECKOUT_COMPLETED',

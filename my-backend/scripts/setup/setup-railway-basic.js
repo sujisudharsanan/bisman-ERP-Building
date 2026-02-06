@@ -90,7 +90,7 @@ async function setupRailway() {
 
     // Step 5: Assign user to branch
     console.log('Step 5: Assigning user to branch...');
-    await prisma.userBranch.upsert({
+    await prisma.user_branches.upsert({
       where: {
         userId_branchId: {
           userId: user.id,

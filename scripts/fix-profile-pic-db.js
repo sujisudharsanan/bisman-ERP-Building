@@ -39,7 +39,7 @@ async function fixProfilePictures() {
     console.log(`📸 Latest profile picture: ${latestFile}`);
     
     // Check which users don't have profile_pic_url set
-    const usersWithoutPic = await prisma.user.findMany({
+    const usersWithoutPic = await prisma.users_enhanced.findMany({
       where: {
         OR: [
           { profile_pic_url: null },
@@ -75,7 +75,7 @@ async function fixProfilePictures() {
       
       console.log(`\n🔄 Updating user ${userId} with profile picture: ${profilePicUrl}`);
       
-      const updated = await prisma.user.update({
+      const updated = await prisma.users_enhanced.update({
         where: { id: userId },
         data: { profile_pic_url: profilePicUrl },
         select: {

@@ -44,7 +44,7 @@ async function main() {
     console.log(`   Deleting old client: ${oldClient.name} (${oldClient.id})`);
     
     // Delete all related records first
-    await prisma.userBranchAssignment.deleteMany({ where: { userId: { in: (await prisma.user.findMany({ where: { tenant_id: oldClient.id }, select: { id: true } })).map(u => u.id) } } });
+    await prisma.user_branchesAssignment.deleteMany({ where: { userId: { in: (await prisma.user.findMany({ where: { tenant_id: oldClient.id }, select: { id: true } })).map(u => u.id) } } });
     await prisma.userEmergencyContact.deleteMany({ where: { userId: { in: (await prisma.user.findMany({ where: { tenant_id: oldClient.id }, select: { id: true } })).map(u => u.id) } } });
     await prisma.userAchievement.deleteMany({ where: { userId: { in: (await prisma.user.findMany({ where: { tenant_id: oldClient.id }, select: { id: true } })).map(u => u.id) } } });
     await prisma.userSkill.deleteMany({ where: { userId: { in: (await prisma.user.findMany({ where: { tenant_id: oldClient.id }, select: { id: true } })).map(u => u.id) } } });

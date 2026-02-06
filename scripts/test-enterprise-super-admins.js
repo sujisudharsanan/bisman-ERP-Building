@@ -143,7 +143,7 @@ async function testSuperAdminsAPI() {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     
-    const dbSuperAdmins = await prisma.superAdmin.findMany({
+    const dbSuperAdmins = await prisma.super_admins.findMany({
       select: { id: true, email: true, name: true }
     });
     

@@ -43,7 +43,7 @@ async function setupEazymilesClient() {
       console.log('\n⚠️  Removing old "Demo Company" client...');
       
       // Delete related records first
-      await prisma.userBranch.deleteMany({ where: { user: { tenant_id: oldClient.id } } });
+      await prisma.user_branches.deleteMany({ where: { user: { tenant_id: oldClient.id } } });
       await prisma.userEmergencyContact.deleteMany({ where: { user: { tenant_id: oldClient.id } } });
       await prisma.userAchievement.deleteMany({ where: { user: { tenant_id: oldClient.id } } });
       await prisma.userSkill.deleteMany({ where: { user: { tenant_id: oldClient.id } } });
@@ -222,7 +222,7 @@ async function setupEazymilesClient() {
       });
 
       // Assign to branch
-      await prisma.userBranch.create({
+      await prisma.user_branches.create({
         data: {
           userId: user.id,
           branchId: branch.id,

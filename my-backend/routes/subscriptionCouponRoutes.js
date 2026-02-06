@@ -232,18 +232,18 @@ router.get('/stats/overview', ...superAdminOnly, async (req, res) => {
       expiredCoupons,
       recentRedemptions,
     ] = await Promise.all([
-      prisma.subscriptionCoupon.count(),
-      prisma.subscriptionCoupon.count({ where: { status: 'ACTIVE', used_count: 0 } }),
-      prisma.couponRedemption.count(),
-      prisma.subscriptionCoupon.count({ where: { status: 'REVOKED' } }),
-      prisma.subscriptionCoupon.count({ 
+      prisma.subscription_coupons.count(),
+      prisma.subscription_coupons.count({ where: { status: 'ACTIVE', used_count: 0 } }),
+      prisma.coupon_redemptions.count(),
+      prisma.subscription_coupons.count({ where: { status: 'REVOKED' } }),
+      prisma.subscription_coupons.count({ 
         where: { 
           status: 'ACTIVE',
           valid_until: { lt: new Date() },
           used_count: 0,
         } 
       }),
-      prisma.couponRedemption.findMany({
+      prisma.coupon_redemptions.findMany({
         take: 10,
         orderBy: { activated_at: 'desc' },
         include: {

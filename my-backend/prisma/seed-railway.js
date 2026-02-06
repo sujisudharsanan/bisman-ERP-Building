@@ -71,7 +71,7 @@ async function main() {
   console.log(`✅ User created: ${user1.email}`);
 
   // Create profile
-  await prisma.userProfile.upsert({
+  await prisma.user_profiles.upsert({
     where: { userId: user1.id },
     update: {
       fullName: 'Arun Kumar',
@@ -96,7 +96,7 @@ async function main() {
   console.log(`✅ Profile created for ${user1.email}`);
 
   // Assign to branch
-  await prisma.userBranch.upsert({
+  await prisma.user_branches.upsert({
     where: {
       userId_branchId: {
         userId: user1.id,

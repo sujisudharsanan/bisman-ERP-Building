@@ -4359,7 +4359,7 @@ app.get('/api/enterprise-admin/dashboard/activity', authenticate, requireRole('E
     // ✅ SECURITY FIX: Add tenant filter for audit logs
     const whereClause = TenantGuard.getTenantFilter(req);
     
-    const recentActivity = await prisma.auditLog.findMany({
+    const recentActivity = await prisma.audit_logs.findMany({
       where: whereClause, // ✅ SECURITY: Filter by tenant_id
       take: 10,
       orderBy: { created_at: 'desc' },

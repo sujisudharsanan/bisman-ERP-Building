@@ -20,7 +20,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
       ...(productType && { productType })
     };
 
-    const modules = await prisma.module.findMany({
+    const modules = await prisma.modules.findMany({
       where,
       orderBy: [{ sort_order: 'asc' }, { display_name: 'asc' }],
       include: {
@@ -59,7 +59,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
 // Toggle Module Status
 router.post('/:id/toggle', requireEnterpriseAdmin, async (req, res) => {
   try {
-    const module = await prisma.module.findUnique({
+    const module = await prisma.modules.findUnique({
       where: { id: parseInt(req.params.id) }
     });
 
@@ -67,7 +67,7 @@ router.post('/:id/toggle', requireEnterpriseAdmin, async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Module not found' });
     }
 
-    const updated = await prisma.module.update({
+    const updated = await prisma.modules.update({
       where: { id: parseInt(req.params.id) },
       data: {
         is_active: !module.is_active,

@@ -41,11 +41,11 @@ router.get('/dashboard', async (req, res) => {
     const totalUsers = await prisma.users_enhanced.count();
 
     // Count modules
-    const businessModules = await prisma.module.count({
+    const businessModules = await prisma.modules.count({
       where: { productType: 'BUSINESS_ERP', is_active: true }
     });
 
-    const pumpModules = await prisma.module.count({
+    const pumpModules = await prisma.modules.count({
       where: { productType: 'PUMP_ERP', is_active: true }
     });
 
@@ -285,7 +285,7 @@ router.post('/super-admins', async (req, res) => {
     });
 
     // Auto-assign modules based on productType
-    const modules = await prisma.module.findMany({
+    const modules = await prisma.modules.findMany({
       where: { 
         productType: productType,
         is_active: true 
@@ -445,7 +445,7 @@ router.post('/super-admins/:id/assign-modules', async (req, res) => {
     }
 
     // Verify all modules match super admin's productType
-    const modules = await prisma.module.findMany({
+    const modules = await prisma.modules.findMany({
       where: { id: { in: moduleIds } }
     });
 
@@ -512,7 +512,7 @@ router.get('/modules', async (req, res) => {
     if (productType) where.productType = productType;
     if (isActive !== undefined) where.is_active = isActive === 'true';
 
-    const modules = await prisma.module.findMany({
+    const modules = await prisma.modules.findMany({
       where,
       orderBy: [
         { productType: 'asc' },

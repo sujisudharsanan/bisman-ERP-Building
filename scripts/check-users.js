@@ -3,14 +3,14 @@ const prisma = new PrismaClient();
 
 async function check() {
   try {
-    const users = await prisma.user.findMany({ 
+    const users = await prisma.users_enhanced.findMany({ 
       select: { id: true, username: true, email: true, role: true }, 
       take: 20 
     });
     console.log('=== USERS IN DATABASE ===');
     console.log(JSON.stringify(users, null, 2));
     
-    const roles = await prisma.role.findMany({ 
+    const roles = await prisma.rbac_roles.findMany({ 
       select: { id: true, name: true }, 
       take: 20 
     }).catch(() => []);

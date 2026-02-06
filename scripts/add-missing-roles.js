@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 async function addMissingRoles() {
   try {
     // Get unique roles from users
-    const users = await prisma.user.findMany({
+    const users = await prisma.users_enhanced.findMany({
       select: { role: true },
       distinct: ['role']
     });
@@ -14,7 +14,7 @@ async function addMissingRoles() {
     userRoles.forEach(r => console.log(`  - ${r}`));
     
     // Get existing roles
-    const existingRoles = await prisma.role.findMany({
+    const existingRoles = await prisma.rbac_roles.findMany({
       select: { name: true }
     });
     const existingRoleNames = existingRoles.map(r => r.name);
@@ -34,7 +34,7 @@ async function addMissingRoles() {
       console.log('\n=== ADDING MISSING ROLES ===');
       for (const roleName of missingRoles) {
         try {
-          const created = await prisma.role.create({
+          const created = await prisma.rbac_roles.create({
             data: {
               name: roleName
             }
@@ -47,7 +47,7 @@ async function addMissingRoles() {
     }
     
     console.log('\n=== FINAL ROLES COUNT ===');
-    const finalRoles = await prisma.role.findMany({
+    const finalRoles = await prisma.rbac_roles.findMany({
       orderBy: { name: 'asc' }
     });
     console.log(`Total roles: ${finalRoles.length}`);

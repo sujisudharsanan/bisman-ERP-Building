@@ -57,7 +57,7 @@ router.post('/start', authenticate, async (req, res) => {
       let call = { id: undefined, room_name: room }
       if (useDB) {
         try {
-          call = await prisma.callLog.create({
+          call = await prisma.call_logs.create({
             data: {
               room_name: room,
               thread_id,
@@ -110,7 +110,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
     let useDB = canUseDB()
     if (useDB) {
       try {
-        call = await prisma.callLog.findUnique({ where: { id: String(req.params.id) } })
+        call = await prisma.call_logs.findUnique({ where: { id: String(req.params.id) } })
       } catch (e) {
         useDB = false
         call = null
@@ -150,7 +150,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
     const now = new Date().toISOString()
     if (!participants.find(p => p.user_id === req.user.id)) participants.push({ user_id: req.user.id, joined_at: now, role: member.role })
     if (useDB) {
-      try { await prisma.callLog.update({ where: { id: call.id }, data: { status: 'active', participants } }) } catch {}
+      try { await prisma.call_logs.update({ where: { id: call.id }, data: { status: 'active', participants } }) } catch {}
     }
 
     // Mirror in memory
@@ -198,7 +198,7 @@ router.post('/:id/end', authenticate, async (req, res) => {
     // Persist if DB available
     if (canUseDB()) {
       try {
-        await prisma.callLog.update({
+        await prisma.call_logs.update({
           where: { id: String(rec.id) },
           data: { status: 'ended', ended_at: endedAt, duration_seconds: durationSeconds }
         })
@@ -222,7 +222,7 @@ router.get('/:id/log', authenticate, async (req, res) => {
   let usedDB = false
   if (canUseDB()) {
     try {
-      const call = await prisma.callLog.findUnique({ where: { id: String(req.params.id) } })
+      const call = await prisma.call_logs.findUnique({ where: { id: String(req.params.id) } })
       usedDB = true
       if (!call) return res.status(404).json({ error: 'not_found' })
       return res.json(call)

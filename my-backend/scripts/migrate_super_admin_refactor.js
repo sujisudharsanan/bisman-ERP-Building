@@ -48,7 +48,7 @@ async function main() {
   let inserted = 0;
   for (const c of clients) {
     for (const m of modules) {
-      await prisma.clientModulePermission.upsert({
+      await prisma.client_module_permissions.upsert({
         where: { client_id_module_id: { client_id: c.id, module_id: m.id } },
         update: {},
         create: {

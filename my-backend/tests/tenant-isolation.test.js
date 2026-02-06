@@ -28,7 +28,7 @@ function generateToken(payload) {
 // Helper function to create test user
 async function createTestUser(data) {
   const hashedPassword = bcrypt.hashSync('testpassword123', 10);
-  return await prisma.user.create({
+  return await prisma.users_enhanced.create({
     data: {
       username: data.username || 'testuser',
       email: data.email || `test-${Date.now()}@example.com`,
@@ -43,9 +43,9 @@ async function createTestUser(data) {
 // Helper function to cleanup test data
 async function cleanupTestData(tenantIds) {
   for (const tenantId of tenantIds) {
-    await prisma.user.deleteMany({ where: { tenant_id: tenantId } });
-    await prisma.auditLog.deleteMany({ where: { tenant_id: tenantId } });
-    await prisma.moduleAssignment.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.users_enhanced.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.audit_logs.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.module_assignments.deleteMany({ where: { tenant_id: tenantId } });
   }
 }
 
@@ -103,7 +103,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
   afterAll(async () => {
     // Cleanup test data
     await cleanupTestData(testTenantIds);
-    await prisma.user.delete({ where: { id: enterpriseAdmin.id } }).catch(() => {});
+    await prisma.users_enhanced.delete({ where: { id: enterpriseAdmin.id } }).catch(() => {});
     await prisma.$disconnect();
   });
 
@@ -156,7 +156,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: 'test-tenant-a' } };
       const whereClause = TenantGuard.getTenantFilter(req);
 
-      const users = await prisma.user.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: whereClause,
         select: { id: true, username: true, tenant_id: true }
       });
@@ -171,7 +171,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: 'test-tenant-a' } };
       const tenantId = TenantGuard.getTenantId(req);
 
-      const newUser = await prisma.user.create({
+      const newUser = await prisma.users_enhanced.create({
         data: {
           username: 'new-tenant-a-user',
           email: `new-user-a-${Date.now()}@test.com`,
@@ -185,7 +185,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       expect(newUser.tenant_id).toBe('test-tenant-a');
 
       // Cleanup
-      await prisma.user.delete({ where: { id: newUser.id } });
+      await prisma.users_enhanced.delete({ where: { id: newUser.id } });
     });
 
     test('User update should only update users in same tenant', async () => {
@@ -195,7 +195,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         tenant_id: tenantId
       };
 
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await prisma.users_enhanced.update({
         where: whereClause,
         data: { username: 'updated-tenant-a-user' }
       });
@@ -209,7 +209,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const targetUserId = tenantBUser.id; // Try to update Tenant B user
 
       await expect(
-        prisma.user.update({
+        prisma.users_enhanced.update({
           where: { 
             id: targetUserId,
             tenant_id: tenantId // Wrong tenant
@@ -223,7 +223,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { role: 'ENTERPRISE_ADMIN' } };
       const whereClause = TenantGuard.getTenantFilter(req);
 
-      const users = await prisma.user.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: whereClause,
         select: { id: true, tenant_id: true }
       });
@@ -243,7 +243,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
   describe('3️⃣ Audit Log Queries (app.js)', () => {
     beforeAll(async () => {
       // Create test audit logs
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           tenant_id: 'test-tenant-a',
           action: 'SECRET_ACTION_A',
@@ -253,7 +253,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         }
       });
 
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           tenant_id: 'test-tenant-b',
           action: 'SECRET_ACTION_B',
@@ -268,7 +268,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: 'test-tenant-a' } };
       const whereClause = TenantGuard.getTenantFilter(req);
 
-      const logs = await prisma.auditLog.findMany({
+      const logs = await prisma.audit_logs.findMany({
         where: whereClause,
         select: { tenant_id: true, action: true }
       });
@@ -285,7 +285,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: 'test-tenant-b' } };
       const whereClause = TenantGuard.getTenantFilter(req);
 
-      const logs = await prisma.auditLog.findMany({
+      const logs = await prisma.audit_logs.findMany({
         where: whereClause,
         select: { tenant_id: true, action: true }
       });
@@ -298,7 +298,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { role: 'ENTERPRISE_ADMIN' } };
       const whereClause = TenantGuard.getTenantFilter(req);
 
-      const logs = await prisma.auditLog.findMany({
+      const logs = await prisma.audit_logs.findMany({
         where: whereClause,
         select: { tenant_id: true, action: true }
       });
@@ -313,7 +313,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
 
     beforeAll(async () => {
       // Create a test module
-      const module = await prisma.module.create({
+      const module = await prisma.modules.create({
         data: {
           module_name: 'test_module',
           display_name: 'Test Module',
@@ -324,7 +324,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       testModuleId = module.id;
 
       // Create module assignments for both tenants
-      await prisma.moduleAssignment.create({
+      await prisma.module_assignments.create({
         data: {
           super_admin_id: tenantAUser.id,
           module_id: testModuleId,
@@ -333,7 +333,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         }
       });
 
-      await prisma.moduleAssignment.create({
+      await prisma.module_assignments.create({
         data: {
           super_admin_id: tenantBUser.id,
           module_id: testModuleId,
@@ -344,14 +344,14 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
     });
 
     afterAll(async () => {
-      await prisma.moduleAssignment.deleteMany({ where: { module_id: testModuleId } });
-      await prisma.module.delete({ where: { id: testModuleId } });
+      await prisma.module_assignments.deleteMany({ where: { module_id: testModuleId } });
+      await prisma.modules.delete({ where: { id: testModuleId } });
     });
 
     test('Module assignment check should only find assignments in same tenant', async () => {
       const tenantId = 'test-tenant-a';
       
-      const assignment = await prisma.moduleAssignment.findFirst({
+      const assignment = await prisma.module_assignments.findFirst({
         where: {
           super_admin_id: tenantAUser.id,
           module_id: testModuleId,
@@ -366,7 +366,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
     test('Cross-tenant module assignment lookup should return null', async () => {
       const tenantId = 'test-tenant-a';
       
-      const assignment = await prisma.moduleAssignment.findFirst({
+      const assignment = await prisma.module_assignments.findFirst({
         where: {
           super_admin_id: tenantBUser.id, // Tenant B user
           module_id: testModuleId,
@@ -380,7 +380,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
     test('Module assignment creation should include tenant_id', async () => {
       const tenantId = 'test-tenant-a';
       
-      const newModule = await prisma.module.create({
+      const newModule = await prisma.modules.create({
         data: {
           module_name: 'test_module_2',
           display_name: 'Test Module 2',
@@ -388,7 +388,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         }
       });
 
-      const assignment = await prisma.moduleAssignment.create({
+      const assignment = await prisma.module_assignments.create({
         data: {
           super_admin_id: tenantAUser.id,
           module_id: newModule.id,
@@ -400,8 +400,8 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       expect(assignment.tenant_id).toBe('test-tenant-a');
 
       // Cleanup
-      await prisma.moduleAssignment.delete({ where: { id: assignment.id } });
-      await prisma.module.delete({ where: { id: newModule.id } });
+      await prisma.module_assignments.delete({ where: { id: assignment.id } });
+      await prisma.modules.delete({ where: { id: newModule.id } });
     });
   });
 
@@ -410,7 +410,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { id: tenantAUser.id, tenant_id: 'test-tenant-a' } };
       const tenantId = req.user.tenant_id;
 
-      const assignments = await prisma.moduleAssignment.findMany({
+      const assignments = await prisma.module_assignments.findMany({
         where: {
           super_admin_id: req.user.id,
           ...(tenantId && { tenant_id: tenantId })
@@ -423,13 +423,13 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
     });
 
     test('User permission check should be tenant-aware', async () => {
-      // Create test permission
-      const permission = await prisma.userPermission.create({
+      // Create test permission using rbac_user_permissions (userPermission table doesn't exist)
+      const permission = await prisma.rbac_user_permissions.create({
         data: {
           user_id: tenantAUser.id,
-          feature_key: 'test_feature',
+          permission_key: 'test_feature',
           tenant_id: 'test-tenant-a',
-          can_read: true
+          is_granted: true
         }
       }).catch(() => null); // May not exist if table doesn't have tenant_id yet
 
@@ -437,10 +437,10 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         const req = { user: { id: tenantAUser.id, tenant_id: 'test-tenant-a' } };
         const tenantId = req.user.tenant_id;
 
-        const hasAccess = await prisma.userPermission.findFirst({
+        const hasAccess = await prisma.rbac_user_permissions.findFirst({
           where: {
             user_id: req.user.id,
-            feature_key: 'test_feature',
+            permission_key: 'test_feature',
             ...(tenantId && { tenant_id: tenantId })
           }
         });
@@ -449,9 +449,9 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         expect(hasAccess.tenant_id).toBe('test-tenant-a');
 
         // Cleanup
-        await prisma.userPermission.delete({ where: { id: permission.id } });
+        await prisma.rbac_user_permissions.delete({ where: { id: permission.id } });
       } else {
-        console.log('⚠️  userPermission table may not have tenant_id column yet');
+        console.log('⚠️  rbac_user_permissions table may not have tenant_id column yet');
       }
     });
   });
@@ -467,7 +467,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: 'test-tenant-a' } };
       const tenantFilter = TenantGuard.getTenantFilter(req);
 
-      const users = await prisma.user.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: tenantFilter,
         select: { id: true, username: true, email: true, tenant_id: true }
       });
@@ -509,7 +509,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
 
       // Prisma should escape this properly
       await expect(
-        prisma.user.findMany({ where: filter })
+        prisma.users_enhanced.findMany({ where: filter })
       ).resolves.toBeDefined(); // Should not crash
     });
 
@@ -517,7 +517,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const req = { user: { tenant_id: '' } };
       const filter = TenantGuard.getTenantFilter(req);
 
-      const users = await prisma.user.findMany({ where: filter });
+      const users = await prisma.users_enhanced.findMany({ where: filter });
       expect(Array.isArray(users)).toBe(true);
     });
   });
@@ -529,7 +529,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       // Without filter
       const startWithout = Date.now();
       for (let i = 0; i < iterations; i++) {
-        await prisma.user.findMany({ take: 100 });
+        await prisma.users_enhanced.findMany({ take: 100 });
       }
       const timeWithout = Date.now() - startWithout;
 
@@ -539,7 +539,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       
       const startWith = Date.now();
       for (let i = 0; i < iterations; i++) {
-        await prisma.user.findMany({ where: filter, take: 100 });
+        await prisma.users_enhanced.findMany({ where: filter, take: 100 });
       }
       const timeWith = Date.now() - startWith;
 
@@ -554,7 +554,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
   describe('🔟 Compliance & Audit Trail', () => {
     test('All user operations should be logged with tenant context', async () => {
       // Create audit log entry
-      const auditEntry = await prisma.auditLog.create({
+      const auditEntry = await prisma.audit_logs.create({
         data: {
           tenant_id: 'test-tenant-a',
           action: 'USER_CREATED',
@@ -567,7 +567,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       expect(auditEntry.tenant_id).toBe('test-tenant-a');
 
       // Cleanup
-      await prisma.auditLog.delete({ where: { id: auditEntry.id } });
+      await prisma.audit_logs.delete({ where: { id: auditEntry.id } });
     });
 
     test('Tenant isolation should support GDPR data requests', async () => {
@@ -575,7 +575,7 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
       const filter = TenantGuard.getTenantFilter(req);
 
       // All user data for GDPR export
-      const userData = await prisma.user.findMany({
+      const userData = await prisma.users_enhanced.findMany({
         where: filter,
         select: {
           id: true,

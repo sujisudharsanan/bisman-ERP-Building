@@ -24,7 +24,7 @@ class AssistantMemoryRepository {
    */
   async getByUserId(userId) {
     try {
-      const memory = await prisma.assistantMemory.findUnique({
+      const memory = await prisma.assistant_memory.findUnique({
         where: { userId },
       });
 
@@ -53,7 +53,7 @@ class AssistantMemoryRepository {
    */
   async upsert(memory) {
     try {
-      await prisma.assistantMemory.upsert({
+      await prisma.assistant_memory.upsert({
         where: { userId: memory.userId },
         create: {
           userId: memory.userId,
@@ -97,7 +97,7 @@ class AssistantMemoryRepository {
       }
 
       // Merge with existing preferences
-      await prisma.assistantMemory.update({
+      await prisma.assistant_memory.update({
         where: { userId },
         data: {
           preferences: {
@@ -120,7 +120,7 @@ class AssistantMemoryRepository {
    */
   async reset(userId) {
     try {
-      await prisma.assistantMemory.update({
+      await prisma.assistant_memory.update({
         where: { userId },
         data: {
           lastBranchId: null,
@@ -142,7 +142,7 @@ class AssistantMemoryRepository {
    */
   async delete(userId) {
     try {
-      await prisma.assistantMemory.delete({
+      await prisma.assistant_memory.delete({
         where: { userId },
       });
     } catch (error) {
@@ -158,7 +158,7 @@ class AssistantMemoryRepository {
    */
   async getConversationCount(userId) {
     try {
-      const memory = await prisma.assistantMemory.findUnique({
+      const memory = await prisma.assistant_memory.findUnique({
         where: { userId },
         select: { conversationCount: true },
       });

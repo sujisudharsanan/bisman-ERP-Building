@@ -140,25 +140,27 @@ registerHandler('seed-tenant-data', async (payload) => {
       // Ignore if warehouse model doesn't exist
     });
 
-    // Create sample units of measure
-    const units = [
-      { name: 'Piece', abbreviation: 'pcs' },
-      { name: 'Kilogram', abbreviation: 'kg' },
-      { name: 'Liter', abbreviation: 'L' },
-      { name: 'Box', abbreviation: 'box' }
-    ];
+    // Create sample units of measure (if table exists)
+    if (prisma.unit_of_measure) {
+      const units = [
+        { name: 'Piece', abbreviation: 'pcs' },
+        { name: 'Kilogram', abbreviation: 'kg' },
+        { name: 'Liter', abbreviation: 'L' },
+        { name: 'Box', abbreviation: 'box' }
+      ];
 
-    for (const unit of units) {
-      await prisma.unitOfMeasure.create({
-        data: {
-          tenant_id: tenantId,
-          name: unit.name,
-          abbreviation: unit.abbreviation,
-          created_at: new Date()
-        }
-      }).catch(() => {
-        // Ignore if model doesn't exist
-      });
+      for (const unit of units) {
+        await prisma.unit_of_measure.create({
+          data: {
+            tenant_id: tenantId,
+            name: unit.name,
+            abbreviation: unit.abbreviation,
+            created_at: new Date()
+          }
+        }).catch(() => {
+          // Ignore if model doesn't exist
+        });
+      }
     }
 
     await updateProvisioningStatus(tenantId, 'seedData', 'completed');
@@ -198,7 +200,7 @@ registerHandler('create-stripe-customer', async (payload) => {
     });
 
     // Store Stripe customer ID
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         stripe_customer_id: customer.id,
@@ -256,7 +258,7 @@ registerHandler('track-event', async (payload) => {
 
   // Log to database audit trail
   try {
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         tenant_id: tenantId,
         action: event.toUpperCase().replace(/-/g, '_'),
@@ -280,7 +282,7 @@ registerHandler('trial-expiration-reminder', async (payload) => {
   
   console.log(`[Jobs] Sending trial reminder to tenant ${tenantId} (${daysRemaining} days left)`);
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId },
     include: {
       users: {

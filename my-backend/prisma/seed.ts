@@ -19,31 +19,31 @@ async function main() {
   const passwordHash = await bcrypt.hash(demoPasswordRaw, 10)
 
   // Create or update users
-  const alice = await prisma.user.upsert({
+  const alice = await prisma.users_enhanced.upsert({
     where: { email: aliceEmail },
     update: { password: passwordHash },
     create: { email: aliceEmail, username: 'alice', password: passwordHash, role: 'admin' },
   })
-  const bob = await prisma.user.upsert({
+  const bob = await prisma.users_enhanced.upsert({
     where: { email: bobEmail },
     update: { password: passwordHash },
     create: { email: bobEmail, username: 'bob', password: passwordHash, role: 'member' },
   })
 
   const threadId = process.env.DEMO_THREAD_ID || 'thread-demo-1'
-  const thread = await prisma.thread.upsert({
+  const thread = await prisma.threads.upsert({
     where: { id: threadId },
     update: { title: 'Demo Thread' },
     create: { id: threadId, title: 'Demo Thread', createdById: alice.id }
   })
 
   // Assign roles within the thread (deduplicated)
-  await prisma.threadMember.upsert({
+  await prisma.thread_members.upsert({
     where: { threadId_userId: { threadId, userId: alice.id } },
     update: { role: 'moderator', isActive: true },
     create: { threadId, userId: alice.id, role: 'moderator' },
   })
-  await prisma.threadMember.upsert({
+  await prisma.thread_members.upsert({
     where: { threadId_userId: { threadId, userId: bob.id } },
     update: { role: 'member', isActive: true },
     create: { threadId, userId: bob.id, role: 'member' },

@@ -252,7 +252,7 @@ class TenantGuard {
       });
 
       // TODO: Store in audit log table for compliance
-      // await prisma.auditLog.create({
+      // await prisma.audit_logs.create({
       //   data: {
       //     user_id: user.id,
       //     tenant_id: user.tenant_id,

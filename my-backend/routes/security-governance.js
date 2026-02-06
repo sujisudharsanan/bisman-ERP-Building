@@ -30,11 +30,11 @@ router.get('/overview', async (req, res) => {
 
     const [totalUsers, activeModules, activeClients, recentDenials, recentViolations, auditLogCount] = await Promise.all([
       prisma.users_enhanced.count({ where: { is_active: true, ...scopeFilter } }),
-      prisma.module.count({ where: { isActive: true } }),
+      prisma.modules.count({ where: { isActive: true } }),
       prisma.clients.count({ where: { isActive: true } }),
-      prisma.auditLog.count({ where: { action: { contains: 'DENIED' }, createdAt: { gte: last24h }, ...scopeFilter } }).catch(() => 0),
+      prisma.audit_logs.count({ where: { action: { contains: 'DENIED' }, createdAt: { gte: last24h }, ...scopeFilter } }).catch(() => 0),
       prisma.securityViolation?.count({ where: { createdAt: { gte: last7d }, ...scopeFilter } }).catch(() => 0),
-      prisma.auditLog.count({ where: { createdAt: { gte: last7d }, ...scopeFilter } }).catch(() => 0)
+      prisma.audit_logs.count({ where: { createdAt: { gte: last7d }, ...scopeFilter } }).catch(() => 0)
     ]);
 
     let healthStatus = 'healthy', healthLabel = 'System Healthy', healthColor = 'green';
@@ -98,8 +98,8 @@ router.get('/violations', async (req, res) => {
     } catch {
       const auditWhere = { action: { contains: 'DENIED' }, ...where };
       const [auditLogs, auditTotal] = await Promise.all([
-        prisma.auditLog.findMany({ where: auditWhere, skip, take, orderBy: { createdAt: 'desc' } }),
-        prisma.auditLog.count({ where: auditWhere })
+        prisma.audit_logs.findMany({ where: auditWhere, skip, take, orderBy: { createdAt: 'desc' } }),
+        prisma.audit_logs.count({ where: auditWhere })
       ]);
       violations = auditLogs.map(log => ({
         id: log.id, type: 'ACCESS_DENIED', severity: 'medium', description: log.action,
@@ -125,7 +125,7 @@ router.get('/violations', async (req, res) => {
 router.get('/rbac-structure', async (req, res) => {
   try {
     const { moduleId } = req.query;
-    const roles = await prisma.role.findMany({
+    const roles = await prisma.rbac_roles.findMany({
       where: moduleId ? { moduleId } : {},
       include: { permissions: true, _count: { select: { users: true } } },
       orderBy: { level: 'asc' }
@@ -147,7 +147,7 @@ router.get('/rbac-structure', async (req, res) => {
       permissionCategories[cat].push({ id: p.id, name: p.name, resource: p.resource });
     });
 
-    const modules = await prisma.module.findMany({ where: { isActive: true }, select: { id: true, name: true, code: true } }).catch(() => []);
+    const modules = await prisma.modules.findMany({ where: { isActive: true }, select: { id: true, name: true, code: true } }).catch(() => []);
 
     res.json({
       ok: true, roles: roleHierarchy, permissionCategories, modules,
@@ -170,11 +170,11 @@ router.get('/audit-health', async (req, res) => {
     const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [totalLogs, logs24h, logs7d, logs30d, actionBreakdown] = await Promise.all([
-      prisma.auditLog.count(),
-      prisma.auditLog.count({ where: { createdAt: { gte: last24h } } }),
-      prisma.auditLog.count({ where: { createdAt: { gte: last7d } } }),
-      prisma.auditLog.count({ where: { createdAt: { gte: last30d } } }),
-      prisma.auditLog.groupBy({ by: ['action'], _count: { action: true }, orderBy: { _count: { action: 'desc' } }, take: 10 }).catch(() => [])
+      prisma.audit_logs.count(),
+      prisma.audit_logs.count({ where: { createdAt: { gte: last24h } } }),
+      prisma.audit_logs.count({ where: { createdAt: { gte: last7d } } }),
+      prisma.audit_logs.count({ where: { createdAt: { gte: last30d } } }),
+      prisma.audit_logs.groupBy({ by: ['action'], _count: { action: true }, orderBy: { _count: { action: 'desc' } }, take: 10 }).catch(() => [])
     ]);
 
     const avgLogsPerDay = logs30d / 30;
@@ -220,7 +220,7 @@ router.post('/violations/:id/resolve', async (req, res) => {
 
     if (!updated) return res.status(404).json({ ok: false, error: 'Violation not found' });
 
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: { userId: user.id, action: 'VIOLATION_RESOLVED', resource: 'security-violation:' + id, metadata: { violationId: id, resolution, notes } }
     }).catch(() => null);
 

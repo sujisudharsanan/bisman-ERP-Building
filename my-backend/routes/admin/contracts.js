@@ -718,7 +718,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
         where: { id },
         data: updateData
       }),
-      prisma.contractAuditLog.create({
+      prisma.contract_audit_logs.create({
         data: {
           contract_id: id,
           action: 'STATUS_CHANGED',
@@ -798,7 +798,7 @@ router.get('/:id/audit', authenticate, async (req, res) => {
     const { id } = req.params;
     const { limit = 50 } = req.query;
 
-    const logs = await prisma.contractAuditLog.findMany({
+    const logs = await prisma.contract_audit_logs.findMany({
       where: { contract_id: id },
       orderBy: { performed_at: 'desc' },
       take: parseInt(limit)
@@ -857,7 +857,7 @@ router.post('/:id/documents', authenticate, async (req, res) => {
           uploaded_by: userId
         }
       }),
-      prisma.contractAuditLog.create({
+      prisma.contract_audit_logs.create({
         data: {
           contract_id: id,
           action: 'DOCUMENT_ADDED',
@@ -944,7 +944,7 @@ router.post('/:id/renew', authenticate, async (req, res) => {
           data: { monthly_amount: new_monthly_amount }
         })
       ] : []),
-      prisma.contractAuditLog.create({
+      prisma.contract_audit_logs.create({
         data: {
           contract_id: id,
           action: 'RENEWED',

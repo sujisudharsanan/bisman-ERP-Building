@@ -142,7 +142,7 @@ async function debugAuth() {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     
-    const enterpriseAdmin = await prisma.enterpriseAdmin.findUnique({
+    const enterpriseAdmin = await prisma.enterprise_admins.findUnique({
       where: { id: decoded.payload.sub || decoded.payload.id || 1 },
       select: {
         id: true,

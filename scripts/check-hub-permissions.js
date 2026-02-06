@@ -17,7 +17,7 @@ async function checkHubInchargePermissions() {
     }
     
     // Find Hub Incharge users
-    const users = await prisma.user.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where: { role_id: role.id },
       select: { id: true, username: true, email: true }
     });

@@ -97,7 +97,7 @@ async function createCustomer(tenant, adminEmail) {
     });
 
     // Update tenant with Stripe customer ID
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenant.id },
       data: {
         stripe_customer_id: customer.id,
@@ -128,7 +128,7 @@ async function createSubscription(tenantId, planType, options = {}) {
     throw new Error('Stripe not configured');
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -169,7 +169,7 @@ async function createSubscription(tenantId, planType, options = {}) {
     const subscription = await stripe.subscriptions.create(subscriptionParams);
 
     // Update tenant with subscription info
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         stripe_subscription_id: subscription.id,
@@ -205,7 +205,7 @@ async function cancelSubscription(tenantId, options = {}) {
     throw new Error('Stripe not configured');
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -227,7 +227,7 @@ async function cancelSubscription(tenantId, options = {}) {
     }
 
     // Update tenant
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         subscription_status: subscription.status,
@@ -260,7 +260,7 @@ async function changePlan(tenantId, newPlan) {
     throw new Error('Stripe not configured');
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -292,7 +292,7 @@ async function changePlan(tenantId, newPlan) {
     const oldPlan = tenant.plan;
 
     // Update tenant
-    await prisma.tenant.update({
+    await prisma.clients.update({
       where: { id: tenantId },
       data: {
         plan: newPlan,
@@ -325,7 +325,7 @@ async function createCheckoutSession(tenantId, planType, options = {}) {
     throw new Error('Stripe not configured');
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -381,7 +381,7 @@ async function createPortalSession(tenantId) {
     throw new Error('Stripe not configured');
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -408,7 +408,7 @@ async function createPortalSession(tenantId) {
  * Get subscription status
  */
 async function getSubscriptionStatus(tenantId) {
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId }
   });
 
@@ -478,7 +478,7 @@ async function handlePaymentSucceeded(invoice) {
   }
 
   // Update tenant payment status
-  await prisma.tenant.update({
+  await prisma.clients.update({
     where: { id: tenantId },
     data: {
       last_payment_at: new Date(),
@@ -509,7 +509,7 @@ async function handlePaymentFailed(invoice) {
     return;
   }
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prisma.clients.findUnique({
     where: { id: tenantId },
     include: {
       users: {
@@ -520,7 +520,7 @@ async function handlePaymentFailed(invoice) {
   });
 
   // Update tenant
-  await prisma.tenant.update({
+  await prisma.clients.update({
     where: { id: tenantId },
     data: {
       payment_failed: true,
@@ -567,7 +567,7 @@ async function handleSubscriptionDeleted(subscription) {
   }
 
   // Downgrade to free plan
-  await prisma.tenant.update({
+  await prisma.clients.update({
     where: { id: tenantId },
     data: {
       plan: 'free',
@@ -601,7 +601,7 @@ async function handleSubscriptionUpdated(subscription) {
 
   const newPlan = subscription.metadata?.plan || 'free';
 
-  await prisma.tenant.update({
+  await prisma.clients.update({
     where: { id: tenantId },
     data: {
       plan: newPlan,
@@ -623,7 +623,7 @@ async function handleSubscriptionUpdated(subscription) {
  */
 async function createAuditLog(tenantId, action, details) {
   try {
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         tenant_id: tenantId,
         action: action,
@@ -654,7 +654,7 @@ async function getInvoices(tenantId, options = {}) {
   }
 
   try {
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prisma.clients.findUnique({
       where: { id: tenantId },
       select: { stripe_customer_id: true }
     });
@@ -712,7 +712,7 @@ async function getUpcomingInvoice(tenantId) {
   }
 
   try {
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prisma.clients.findUnique({
       where: { id: tenantId },
       select: { stripe_customer_id: true }
     });

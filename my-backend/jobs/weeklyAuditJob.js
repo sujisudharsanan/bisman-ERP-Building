@@ -64,7 +64,7 @@ async function generateAuditReport(tenantId, startDate, endDate) {
   `;
 
   // Get audit logs as fallback/supplement
-  const auditLogs = await prisma.auditLog.findMany({
+  const auditLogs = await prisma.audit_logs.findMany({
     where: {
       tenant_id: tenantId,
       created_at: {

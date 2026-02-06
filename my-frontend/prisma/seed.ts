@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Roles
-  const roles = await prisma.role.createMany({
+  const roles = await prisma.rbac_roles.createMany({
     data: [
       { key: 'SUPER_ADMIN', name: 'Super Admin' },
       { key: 'ENTERPRISE_ADMIN', name: 'BISMAN Corporation' },
@@ -17,22 +17,22 @@ async function main() {
 
   // Users
   const password = await bcrypt.hash('Password@123', 10);
-  const superAdmin = await prisma.user.upsert({
+  const superAdmin = await prisma.users_enhanced.upsert({
     where: { email: 'super@erp.local' },
     update: {},
     create: { email: 'super@erp.local', name: 'Super Admin', password },
   });
-  const enterpriseAdmin = await prisma.user.upsert({
+  const enterpriseAdmin = await prisma.users_enhanced.upsert({
     where: { email: 'enterprise@erp.local' },
     update: {},
     create: { email: 'enterprise@erp.local', name: 'BISMAN Corporation', password },
   });
 
   // Attach roles
-  const superRole = await prisma.role.findUnique({ where: { key: 'SUPER_ADMIN' } });
-  const entRole = await prisma.role.findUnique({ where: { key: 'ENTERPRISE_ADMIN' } });
-  const orgAdminRole = await prisma.role.findUnique({ where: { key: 'ORG_ADMIN' } });
-  const orgUserRole = await prisma.role.findUnique({ where: { key: 'ORG_USER' } });
+  const superRole = await prisma.rbac_roles.findUnique({ where: { key: 'SUPER_ADMIN' } });
+  const entRole = await prisma.rbac_roles.findUnique({ where: { key: 'ENTERPRISE_ADMIN' } });
+  const orgAdminRole = await prisma.rbac_roles.findUnique({ where: { key: 'ORG_ADMIN' } });
+  const orgUserRole = await prisma.rbac_roles.findUnique({ where: { key: 'ORG_USER' } });
 
   if (superRole) await prisma.userRole.upsert({ where: { id: `${superAdmin.id}-${superRole.id}` }, update: {}, create: { userId: superAdmin.id, roleId: superRole.id } });
   if (entRole) await prisma.userRole.upsert({ where: { id: `${enterpriseAdmin.id}-${entRole.id}` }, update: {}, create: { userId: enterpriseAdmin.id, roleId: entRole.id } });
@@ -50,12 +50,12 @@ async function main() {
   });
 
   // Org users
-  const orgAdmin = await prisma.user.upsert({
+  const orgAdmin = await prisma.users_enhanced.upsert({
     where: { email: 'admin@alpha.local' },
     update: {},
     create: { email: 'admin@alpha.local', name: 'Alpha Admin', password },
   });
-  const orgUser = await prisma.user.upsert({
+  const orgUser = await prisma.users_enhanced.upsert({
     where: { email: 'user@alpha.local' },
     update: {},
     create: { email: 'user@alpha.local', name: 'Alpha User', password },
@@ -70,14 +70,14 @@ async function main() {
   ], skipDuplicates: true });
 
   // Modules
-  const modules = await prisma.module.createMany({ data: [
+  const modules = await prisma.modules.createMany({ data: [
     { key: 'BILLING', name: 'Billing' },
     { key: 'REPORTS', name: 'Reports' },
     { key: 'INTEGRATIONS', name: 'Integrations' },
     { key: 'AI_AUTOMATION', name: 'AI & Automation' },
   ], skipDuplicates: true });
 
-  const billing = await prisma.module.findUnique({ where: { key: 'BILLING' } });
+  const billing = await prisma.modules.findUnique({ where: { key: 'BILLING' } });
   if (billing) await prisma.orgsEnabled.create({ data: { orgId: orgA.id, moduleId: billing.id, enabled: true } });
 
   // Subscriptions

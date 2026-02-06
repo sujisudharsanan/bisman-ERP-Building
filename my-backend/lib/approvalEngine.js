@@ -56,7 +56,7 @@ const BUSINESS_LEVELS = {
 async function getModuleApprovalFlow(moduleId) {
   const prisma = getPrismaClient();
   
-  const flows = await prisma.moduleApprovalFlow.findMany({
+  const flows = await prisma.module_approval_flows.findMany({
     where: {
       module_id: moduleId,
       is_active: true
@@ -81,7 +81,7 @@ async function getModuleApprovalFlow(moduleId) {
 async function clientHasModuleAccess(clientId, moduleId) {
   const prisma = getPrismaClient();
   
-  const permission = await prisma.clientModulePermission.findFirst({
+  const permission = await prisma.client_module_permissions.findFirst({
     where: {
       client_id: clientId,
       module_id: moduleId,
@@ -211,7 +211,7 @@ async function getApproverForStep(clientId, moduleId, approvalLevel, options = {
   }
   
   // 2. Get the approval step configuration
-  const approvalStep = await prisma.moduleApprovalFlow.findFirst({
+  const approvalStep = await prisma.module_approval_flows.findFirst({
     where: {
       module_id: moduleId,
       approval_level: approvalLevel,
@@ -505,7 +505,7 @@ function requireApprovalLevel(approvalLevel, getModuleId) {
       const prisma = getPrismaClient();
       
       // Get the approval step configuration
-      const approvalStep = await prisma.moduleApprovalFlow.findFirst({
+      const approvalStep = await prisma.module_approval_flows.findFirst({
         where: {
           module_id: moduleId,
           approval_level: approvalLevel,

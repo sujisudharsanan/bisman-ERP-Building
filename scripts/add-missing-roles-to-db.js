@@ -27,7 +27,7 @@ async function main() {
   for (const roleName of MISSING_ROLES) {
     try {
       // Check if role already exists
-      const existing = await prisma.role.findFirst({
+      const existing = await prisma.rbac_roles.findFirst({
         where: { name: roleName }
       });
       
@@ -37,7 +37,7 @@ async function main() {
       }
       
       // Create the role
-      const created = await prisma.role.create({
+      const created = await prisma.rbac_roles.create({
         data: {
           name: roleName
         }
@@ -50,7 +50,7 @@ async function main() {
   }
   
   console.log('\n=== VERIFICATION ===');
-  const allRoles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
+  const allRoles = await prisma.rbac_roles.findMany({ orderBy: { name: 'asc' } });
   console.log(`Total roles in database: ${allRoles.length}`);
   
   console.log('\n=== ALL ROLES ===');

@@ -7,13 +7,13 @@ async function testAPI() {
     
     // 1. Get all roles (what /api/privileges/roles should return)
     console.log('1. GET /api/privileges/roles:');
-    const roles = await prisma.role.findMany({
+    const roles = await prisma.rbac_roles.findMany({
       orderBy: { name: 'asc' }
     });
     
     const rolesWithCounts = await Promise.all(
       roles.map(async (role) => {
-        const userCount = await prisma.user.count({
+        const userCount = await prisma.users_enhanced.count({
           where: { role: role.name }
         });
         return {
@@ -31,7 +31,7 @@ async function testAPI() {
     for (const role of roles) {
       console.log(`\n   GET /api/privileges/users?roleId=${role.id} (${role.name}):`);
       
-      const users = await prisma.user.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: { role: role.name },
         select: {
           id: true,

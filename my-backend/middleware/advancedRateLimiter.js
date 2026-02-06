@@ -112,7 +112,7 @@ async function rateLimitHandler(req, res, _options) {
   // Optional: Store violation in database for security audit
   try {
     // Uncomment if you have a rate_limit_violations table
-    // await prisma.rateLimitViolation.create({
+    // await prisma.rate_limit_violations.create({
     //   data: {
     //     ip_address: ip,
     //     endpoint: endpoint,

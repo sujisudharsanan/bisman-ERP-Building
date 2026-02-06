@@ -213,7 +213,7 @@ async function shouldEscalateToEnterpriseAdmin(options) {
     } = options;
 
     // Check if L4 (Enterprise Admin) level is configured
-    const enterpriseAdminLevel = await prisma.approvalLevel.findFirst({
+    const enterpriseAdminLevel = await prisma.approval_levels.findFirst({
         where: {
             level: 3, // L4 in 0-indexed system
             roleName: 'ENTERPRISE_ADMIN',

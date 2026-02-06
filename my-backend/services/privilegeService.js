@@ -125,7 +125,7 @@ class PrivilegeService {
         if (!(await isDbReady())) {
           throw new Error('DATABASE_ERROR: Database not available - cannot fetch roles');
         }
-        const roles = await this.prisma.role.findMany({
+        const roles = await this.prisma.rbac_roles.findMany({
           orderBy: { name: 'asc' }
         });
 
@@ -189,7 +189,7 @@ class PrivilegeService {
       }
       // If DB is ready and roles table exists (non-RBAC path), attempt to update if schema supports is_active
       try {
-        const updated = await this.prisma.role.update({
+        const updated = await this.prisma.rbac_roles.update({
           where: { id: Number(roleId) },
           data: { is_active: Boolean(isActive), updated_at: new Date() }
         });
@@ -220,7 +220,7 @@ class PrivilegeService {
           
           if (!Number.isNaN(Number(trimmed))) {
             try {
-              const roleRecord = await this.prisma.role.findUnique({
+              const roleRecord = await this.prisma.rbac_roles.findUnique({
                 where: { id: Number(trimmed) }
               });
               if (roleRecord && roleRecord.name) {
@@ -660,7 +660,7 @@ class PrivilegeService {
   // Log privilege changes for audit trail
   async logPrivilegeChange(auditData) {
     try {
-      await this.prisma.auditLog.create({
+      await this.prisma.audit_logs.create({
         data: {
           user_id: auditData.user_id,
           action: auditData.action,
@@ -701,7 +701,7 @@ class PrivilegeService {
         if (end_date) where.created_at.lte = new Date(end_date);
       }
 
-      const auditLogs = await this.prisma.auditLog.findMany({
+      const auditLogs = await this.prisma.audit_logs.findMany({
         where,
         include: {
           user: {

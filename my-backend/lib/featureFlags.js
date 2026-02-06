@@ -267,7 +267,7 @@ class FeatureFlagService {
       const planLimits = PLAN_LIMITS[planCode] || PLAN_LIMITS.STARTER;
 
       // Get client-specific overrides
-      const overrides = await prisma.clientFeatureOverride.findMany({
+      const overrides = await prisma.client_feature_overrides.findMany({
         where: {
           client_id: clientId,
           OR: [
@@ -487,7 +487,7 @@ async function getAllPlans() {
   const prisma = getPrisma();
   
   try {
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where: { is_active: true, is_public: true },
       orderBy: { sort_order: 'asc' },
     });

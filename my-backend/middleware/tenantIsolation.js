@@ -253,7 +253,7 @@ async function logCrossTenantAttempt(details) {
   const prisma = getPrisma()
 
   try {
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: details.userId,
         action: 'CROSS_TENANT_ACCESS_ATTEMPT',

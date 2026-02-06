@@ -992,7 +992,7 @@ async function fullSetup() {
       }
 
       // Assign to branch
-      await prisma.userBranch.upsert({
+      await prisma.user_branches.upsert({
         where: {
           userId_branchId: {
             userId: user.id,

@@ -112,7 +112,7 @@ router.get('/:moduleId', requireAdmin, async (req, res) => {
     const prisma = getPrismaClient();
     
     // Get module info
-    const module = await prisma.module.findUnique({
+    const module = await prisma.modules.findUnique({
       where: { id: moduleId },
       include: {
         approvalFlows: {
@@ -179,7 +179,7 @@ router.put('/:moduleId', requireSuperAdmin, async (req, res) => {
     
     // Validate module exists
     const prisma = getPrismaClient();
-    const module = await prisma.module.findUnique({ where: { id: moduleId } });
+    const module = await prisma.modules.findUnique({ where: { id: moduleId } });
     if (!module) {
       return res.status(404).json({ error: 'Module not found' });
     }
