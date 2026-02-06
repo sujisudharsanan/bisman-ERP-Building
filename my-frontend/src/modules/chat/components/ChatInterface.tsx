@@ -1461,8 +1461,13 @@ Choose a subscription plan that fits your business needs:
       if (response.ok) {
         const data = await response.json();
         
+        // Update conversationId from backend response (crucial for message persistence)
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId.toString());
+        }
+        
         const botMessage: Message = {
-          id: `bot-${Date.now()}`,
+          id: data.messageId?.toString() || `bot-${Date.now()}`,
           message: data.response || data.reply || data.message || "I'm here to help! Could you rephrase that?",
           user_id: 'bey',
           create_at: Date.now(),
@@ -1472,8 +1477,7 @@ Choose a subscription plan that fits your business needs:
 
         setMessages(prev => [...prev, botMessage]);
         
-        // Save conversation to database
-        await saveConversation();
+        // No need to call saveConversation - backend already saved the messages
       } else {
         // Try to get error message from response
         let errorMessage = "Oops! Something went wrong on my end. Mind trying that again? 😅";
