@@ -841,7 +841,6 @@ model call_logs {
   consent_recorded Boolean   @default(false)
   created_at       DateTime  @default(now()) @db.Timestamp(6)
   updated_at       DateTime  @default(now()) @db.Timestamp(6)
-  threads          threads   @relation(fields: [thread_id], references: [id_old], onDelete: Cascade)
 
   @@index([initiator_id], map: "idx_call_logs_initiator")
   @@index([room_name], map: "idx_call_logs_room")
@@ -2299,12 +2298,11 @@ model master_subscription_plans {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model message_reactions {
-  id              BigInt          @id @default(autoincrement())
-  message_id      String
-  user_id         String
-  emoji           String          @db.VarChar(20)
-  created_at      DateTime        @default(now()) @db.Timestamp(6)
-  thread_messages thread_messages @relation(fields: [message_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction)
+  id         BigInt   @id @default(autoincrement())
+  message_id String
+  user_id    String
+  emoji      String   @db.VarChar(20)
+  created_at DateTime @default(now()) @db.Timestamp(6)
 
   @@unique([message_id, user_id, emoji])
   @@index([emoji], map: "idx_message_reactions_emoji")
@@ -2314,11 +2312,10 @@ model message_reactions {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model message_reads {
-  id              BigInt          @id @default(autoincrement())
-  message_id      String
-  user_id         String
-  read_at         DateTime        @default(now()) @db.Timestamp(6)
-  thread_messages thread_messages @relation(fields: [message_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction)
+  id         BigInt   @id @default(autoincrement())
+  message_id String
+  user_id    String
+  read_at    DateTime @default(now()) @db.Timestamp(6)
 
   @@unique([message_id, user_id])
   @@index([message_id], map: "idx_message_reads_message")
@@ -3234,14 +3231,15 @@ model rbac_user_permissions {
 }
 
 model rbac_user_roles {
-  id          Int         @id @default(autoincrement())
-  user_id     String
-  role_id     Int?
-  assigned_at DateTime?   @default(now()) @db.Timestamp(6)
-  assigned_by String?
-  is_active   Boolean     @default(false)
-  expires_at  DateTime?   @db.Timestamp(6)
-  rbac_roles  rbac_roles? @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           Int         @id @default(autoincrement())
+  user_id      String
+  role_id      Int?
+  assigned_at  DateTime?   @default(now()) @db.Timestamp(6)
+  assigned_by  String?
+  is_active    Boolean     @default(false)
+  expires_at   DateTime?   @db.Timestamp(6)
+  user_id_uuid String?     @db.Uuid
+  rbac_roles   rbac_roles? @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([user_id, role_id])
   @@index([is_active], map: "idx_rbac_user_roles_active")
@@ -4047,22 +4045,20 @@ model system_metric_samples {
 }
 
 model task_attachments {
-  id               Int            @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   task_id          Int
-  tenant_id        String?        @db.Uuid
+  tenant_id        String?   @db.Uuid
   message_id       Int?
-  filename         String         @db.VarChar(500)
-  original_name    String?        @db.VarChar(500)
+  filename         String    @db.VarChar(500)
+  original_name    String?   @db.VarChar(500)
   file_url         String
-  file_type        String?        @db.VarChar(100)
+  file_type        String?   @db.VarChar(100)
   file_size        BigInt?
-  mime_type        String?        @db.VarChar(100)
-  storage_provider String?        @default("LOCAL") @db.VarChar(50)
+  mime_type        String?   @db.VarChar(100)
+  storage_provider String?   @default("LOCAL") @db.VarChar(50)
   storage_key      String?
   uploaded_by      String
-  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
-  task_messages    task_messages? @relation(fields: [message_id], references: [id_old], onUpdate: NoAction, map: "fk_task_attachments_message")
-  workflow_tasks   workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_attachments_task")
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([task_id], map: "idx_task_attachments_task")
   @@index([task_id], map: "idx_task_attachments_task_id")
@@ -4072,19 +4068,18 @@ model task_attachments {
 }
 
 model task_audit {
-  id             Int            @id @default(autoincrement())
-  task_id        Int
-  actor_id       String
-  actor_name     String?        @db.VarChar(255)
-  actor_role     String?        @db.VarChar(100)
-  action         String         @db.VarChar(50)
-  from_status    String?        @db.VarChar(50)
-  to_status      String?        @db.VarChar(50)
-  reason         String?
-  metadata       Json?
-  created_at     DateTime       @default(now()) @db.Timestamp(6)
-  tenant_id      String?        @db.Uuid
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onUpdate: NoAction)
+  id          Int      @id @default(autoincrement())
+  task_id     Int
+  actor_id    String
+  actor_name  String?  @db.VarChar(255)
+  actor_role  String?  @db.VarChar(100)
+  action      String   @db.VarChar(50)
+  from_status String?  @db.VarChar(50)
+  to_status   String?  @db.VarChar(50)
+  reason      String?
+  metadata    Json?
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  tenant_id   String?  @db.Uuid
 
   @@index([action], map: "idx_task_audit_action")
   @@index([actor_id], map: "idx_task_audit_actor_id")
@@ -4137,7 +4132,6 @@ model task_clarifications {
   created_at              DateTime              @default(now()) @db.Timestamptz(6)
   updated_at              DateTime?             @default(now()) @db.Timestamptz(6)
   clarification_audit     clarification_audit[]
-  workflow_tasks          workflow_tasks        @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "task_clarifications_task_id_foreign")
 
   @@index([task_id, status], map: "idx_task_clarifications_task_status")
   @@index([created_at], map: "task_clarifications_created_at_index")
@@ -4149,11 +4143,10 @@ model task_clarifications {
 }
 
 model task_label_assignments {
-  task_id        Int
-  label_id       Int
-  assigned_at    DateTime?      @default(now()) @db.Timestamptz(6)
-  task_labels    task_labels    @relation(fields: [label_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_label_label")
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_label_task")
+  task_id     Int
+  label_id    Int
+  assigned_at DateTime?   @default(now()) @db.Timestamptz(6)
+  task_labels task_labels @relation(fields: [label_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_label_label")
 
   @@id([task_id, label_id])
 }
@@ -4173,27 +4166,22 @@ model task_labels {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model task_messages {
-  id_old            Int                @id @default(autoincrement())
-  task_id_old       Int
-  tenant_id         String?            @db.Uuid
+  tenant_id         String?         @db.Uuid
   content           String
-  message_type      String?            @default("TEXT") @db.VarChar(50)
-  is_system_message Boolean?           @default(false)
-  is_edited         Boolean?           @default(false)
-  edited_at         DateTime?          @db.Timestamptz(6)
-  read_by           Int[]              @default([])
-  created_at        DateTime?          @default(now()) @db.Timestamptz(6)
-  id                String             @unique(map: "task_messages_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sender_id         String?            @db.Uuid
-  task_id           String?            @db.Uuid
-  reply_to_id       String?            @db.Uuid
-  task_attachments  task_attachments[]
-  users_enhanced    users_enhanced?    @relation(fields: [sender_id], references: [id], onUpdate: NoAction, map: "fk_task_messages_sender_id")
-  workflow_tasks    workflow_tasks?    @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_messages_task")
+  message_type      String?         @default("TEXT") @db.VarChar(50)
+  is_system_message Boolean?        @default(false)
+  is_edited         Boolean?        @default(false)
+  edited_at         DateTime?       @db.Timestamptz(6)
+  read_by           Int[]           @default([])
+  created_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  id                String          @unique(map: "task_messages_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender_id         String?         @db.Uuid
+  task_id           String?         @db.Uuid
+  reply_to_id       String?         @db.Uuid
+  users_enhanced    users_enhanced? @relation(fields: [sender_id], references: [id], onUpdate: NoAction, map: "fk_task_messages_sender_id")
+  workflow_tasks    workflow_tasks? @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_messages_task")
 
   @@index([created_at(sort: Desc)], map: "idx_task_messages_created")
-  @@index([task_id_old], map: "idx_task_messages_task")
-  @@index([task_id_old], map: "idx_task_messages_task_id")
   @@index([tenant_id], map: "idx_task_messages_tenant")
   @@index([tenant_id], map: "idx_task_messages_tenant_id")
   @@index([sender_id], map: "idx_task_messages_sender_id_uuid")
@@ -4201,17 +4189,16 @@ model task_messages {
 }
 
 model task_participants {
-  id             Int            @id @default(autoincrement())
-  task_id        Int
-  tenant_id      String?        @db.Uuid
-  user_id        String
-  role           String?        @default("VIEWER") @db.VarChar(50)
-  can_edit       Boolean        @default(false)
-  can_comment    Boolean?       @default(true)
-  can_approve    Boolean?       @default(false)
-  added_by       String
-  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_participants_task")
+  id          Int       @id @default(autoincrement())
+  task_id     Int
+  tenant_id   String?   @db.Uuid
+  user_id     String
+  role        String?   @default("VIEWER") @db.VarChar(50)
+  can_edit    Boolean   @default(false)
+  can_comment Boolean?  @default(true)
+  can_approve Boolean?  @default(false)
+  added_by    String
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
 
   @@unique([task_id, user_id])
   @@unique([task_id, user_id], map: "uk_task_participants")
@@ -4220,25 +4207,24 @@ model task_participants {
 }
 
 model task_request_history {
-  id               Int           @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   request_id       Int
-  actor_id         String        @db.Uuid
+  actor_id         String    @db.Uuid
   actor_role_level Int?
-  actor_role_name  String?       @db.VarChar(100)
-  action           String        @db.VarChar(100)
-  action_category  String?       @db.VarChar(50)
-  previous_status  String?       @db.VarChar(50)
-  new_status       String?       @db.VarChar(50)
-  field_changed    String?       @db.VarChar(100)
+  actor_role_name  String?   @db.VarChar(100)
+  action           String    @db.VarChar(100)
+  action_category  String?   @db.VarChar(50)
+  previous_status  String?   @db.VarChar(50)
+  new_status       String?   @db.VarChar(50)
+  field_changed    String?   @db.VarChar(100)
   old_value        String?
   new_value        String?
   reason           String?
-  ip_address       String?       @db.VarChar(45)
+  ip_address       String?   @db.VarChar(45)
   user_agent       String?
-  session_id       String?       @db.VarChar(255)
-  tenant_id        String?       @db.Uuid
-  created_at       DateTime?     @default(now()) @db.Timestamp(6)
-  task_requests    task_requests @relation(fields: [request_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction)
+  session_id       String?   @db.VarChar(255)
+  tenant_id        String?   @db.Uuid
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
 
   @@index([action], map: "idx_request_history_action")
   @@index([actor_id], map: "idx_request_history_actor")
@@ -4248,19 +4234,18 @@ model task_request_history {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model task_request_messages {
-  id                        Int           @id @default(autoincrement())
+  id                        Int       @id @default(autoincrement())
   request_id                Int
-  sender_id                 String        @db.Uuid
+  sender_id                 String    @db.Uuid
   content                   String
-  message_type              String?       @default("TEXT") @db.VarChar(50)
-  is_system_message         Boolean?      @default(false)
-  is_clarification_request  Boolean?      @default(false)
-  is_clarification_response Boolean?      @default(false)
-  attachment_ids            Int[]         @default([])
-  read_by                   String[]      @default([]) @db.Uuid
-  tenant_id                 String?       @db.Uuid
-  created_at                DateTime?     @default(now()) @db.Timestamp(6)
-  task_requests             task_requests @relation(fields: [request_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction)
+  message_type              String?   @default("TEXT") @db.VarChar(50)
+  is_system_message         Boolean?  @default(false)
+  is_clarification_request  Boolean?  @default(false)
+  is_clarification_response Boolean?  @default(false)
+  attachment_ids            Int[]     @default([])
+  read_by                   String[]  @default([]) @db.Uuid
+  tenant_id                 String?   @db.Uuid
+  created_at                DateTime? @default(now()) @db.Timestamp(6)
 
   @@index([created_at], map: "idx_request_messages_created")
   @@index([request_id], map: "idx_request_messages_request")
@@ -4269,40 +4254,37 @@ model task_request_messages {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model task_requests {
-  id_old                Int                     @id @default(autoincrement())
-  request_number        String                  @unique @db.VarChar(20)
-  title                 String                  @db.VarChar(500)
+  request_number        String          @unique @db.VarChar(20)
+  title                 String          @db.VarChar(500)
   description           String?
-  priority              String?                 @default("MEDIUM") @db.VarChar(20)
-  suggested_due_date    DateTime?               @db.Timestamp(6)
-  requested_by          String                  @db.Uuid
-  requested_to          String                  @db.Uuid
+  priority              String?         @default("MEDIUM") @db.VarChar(20)
+  suggested_due_date    DateTime?       @db.Timestamp(6)
+  requested_by          String          @db.Uuid
+  requested_to          String          @db.Uuid
   requester_role_level  Int
-  requester_role_name   String?                 @db.VarChar(100)
+  requester_role_name   String?         @db.VarChar(100)
   target_role_level     Int
-  target_role_name      String?                 @db.VarChar(100)
-  status                String                  @default("REQUESTED") @db.VarChar(50)
-  resolved_at           DateTime?               @db.Timestamp(6)
-  resolved_by           String?                 @db.Uuid
-  resolution_action     String?                 @db.VarChar(50)
+  target_role_name      String?         @db.VarChar(100)
+  status                String          @default("REQUESTED") @db.VarChar(50)
+  resolved_at           DateTime?       @db.Timestamp(6)
+  resolved_by           String?         @db.Uuid
+  resolution_action     String?         @db.VarChar(50)
   resolution_reason     String?
-  delegated_to          String?                 @db.Uuid
-  deferred_until        DateTime?               @db.Timestamp(6)
-  clarification_count   Int?                    @default(0)
-  last_clarification_at DateTime?               @db.Timestamp(6)
-  watcher_ids           String[]                @default([]) @db.Uuid
-  tags                  String[]                @default([])
-  metadata              Json?                   @default("{}")
-  tenant_id             String?                 @db.Uuid
-  created_at            DateTime?               @default(now()) @db.Timestamp(6)
-  updated_at            DateTime?               @default(now()) @db.Timestamp(6)
-  org_unit_id           String?                 @db.Uuid
-  id                    String                  @unique(map: "task_requests_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  converted_task_id     String?                 @db.Uuid
-  task_request_history  task_request_history[]
-  task_request_messages task_request_messages[]
-  workflow_tasks        workflow_tasks?         @relation(fields: [converted_task_id], references: [id], onUpdate: NoAction, map: "fk_task_requests_converted")
-  org_units             org_units?              @relation(fields: [org_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  delegated_to          String?         @db.Uuid
+  deferred_until        DateTime?       @db.Timestamp(6)
+  clarification_count   Int?            @default(0)
+  last_clarification_at DateTime?       @db.Timestamp(6)
+  watcher_ids           String[]        @default([]) @db.Uuid
+  tags                  String[]        @default([])
+  metadata              Json?           @default("{}")
+  tenant_id             String?         @db.Uuid
+  created_at            DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?       @default(now()) @db.Timestamp(6)
+  org_unit_id           String?         @db.Uuid
+  id                    String          @unique(map: "task_requests_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  converted_task_id     String?         @db.Uuid
+  workflow_tasks        workflow_tasks? @relation(fields: [converted_task_id], references: [id], onUpdate: NoAction, map: "fk_task_requests_converted")
+  org_units             org_units?      @relation(fields: [org_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([status, requested_by], map: "idx_task_requests_composite_status_by")
   @@index([status, requested_to], map: "idx_task_requests_composite_status_to")
@@ -4336,7 +4318,6 @@ model task_reviews {
   sender_id_uuid         String?           @db.Uuid
   review_audit           review_audit[]
   review_comments        review_comments[]
-  workflow_tasks         workflow_tasks    @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "task_reviews_task_id_foreign")
 
   @@index([purpose], map: "idx_task_reviews_purpose")
   @@index([reviewer_department_id], map: "idx_task_reviews_reviewer_department")
@@ -4348,24 +4329,22 @@ model task_reviews {
 }
 
 model task_time_entries {
-  id             Int            @id @default(autoincrement())
-  task_id        Int
-  user_id        String
-  hours          Decimal        @db.Decimal(10, 2)
-  description    String?
-  entry_date     DateTime?      @default(dbgenerated("CURRENT_DATE")) @db.Date
-  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_time_entry_task")
+  id          Int       @id @default(autoincrement())
+  task_id     Int
+  user_id     String
+  hours       Decimal   @db.Decimal(10, 2)
+  description String?
+  entry_date  DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([task_id], map: "idx_task_time_entries_task")
   @@index([user_id], map: "idx_task_time_entries_user")
 }
 
 model task_watchers {
-  task_id        Int
-  user_id        String
-  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_watcher_task")
+  task_id    Int
+  user_id    String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
 
   @@id([task_id, user_id])
   @@index([user_id], map: "idx_task_watchers_user")
@@ -4502,7 +4481,7 @@ model tenant_usage {
 }
 
 model thread_members {
-  id          String    @id
+  id          String    @id @db.Uuid
   userId      Int
   role        String    @default("member") @db.VarChar(50)
   joinedAt    DateTime  @default(now()) @db.Timestamp(6)
@@ -4516,26 +4495,23 @@ model thread_members {
 }
 
 model thread_messages {
-  id_old            String              @id
-  senderId          Int
-  content           String
-  type              String              @default("text") @db.VarChar(50)
-  attachments       Json?
-  reactions         Json?
-  isEdited          Boolean             @default(false)
-  editedAt          DateTime?           @db.Timestamp(6)
-  isDeleted         Boolean             @default(false)
-  deletedAt         DateTime?           @db.Timestamp(6)
-  readBy            Json?
-  createdAt         DateTime            @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime            @default(now()) @db.Timestamp(6)
-  id                String              @unique(map: "thread_messages_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  thread_id         String?             @db.Uuid
-  reply_to_id       String?             @db.Uuid
-  senderid_uuid     String?             @db.Uuid
-  message_reactions message_reactions[]
-  message_reads     message_reads[]
-  threads           threads?            @relation(fields: [thread_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_thread_messages_thread")
+  senderId      Int
+  content       String
+  type          String    @default("text") @db.VarChar(50)
+  attachments   Json?
+  reactions     Json?
+  isEdited      Boolean   @default(false)
+  editedAt      DateTime? @db.Timestamp(6)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime? @db.Timestamp(6)
+  readBy        Json?
+  createdAt     DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @db.Timestamp(6)
+  id            String    @unique(map: "thread_messages_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  thread_id     String?   @db.Uuid
+  reply_to_id   String?   @db.Uuid
+  senderid_uuid String?   @db.Uuid
+  threads       threads?  @relation(fields: [thread_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_thread_messages_thread")
 
   @@index([createdAt], map: "idx_thread_messages_created")
   @@index([isDeleted], map: "idx_thread_messages_deleted")
@@ -4571,13 +4547,11 @@ model thread_messages_partitioned {
 }
 
 model threads {
-  id_old          String            @id
   title           String?           @db.VarChar(200)
   createdById     Int
   createdAt       DateTime          @default(now()) @db.Timestamp(6)
   updatedAt       DateTime          @default(now()) @db.Timestamp(6)
   id              String            @unique(map: "threads_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  call_logs       call_logs[]
   thread_messages thread_messages[]
 
   @@index([createdById], map: "idx_threads_creator")
@@ -5022,84 +4996,65 @@ model workflow_role_map {
 }
 
 model workflow_task_history {
-  id             Int            @id @default(autoincrement())
-  task_id        Int
-  from_status    String?        @db.VarChar(50)
-  to_status      String?        @db.VarChar(50)
-  action         String         @db.VarChar(100)
-  actor_id       String?        @db.Uuid
-  actor_type     String?        @default("USER") @db.VarChar(50)
-  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
-  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id_old], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_history_task")
+  id          Int       @id @default(autoincrement())
+  task_id     Int
+  from_status String?   @db.VarChar(50)
+  to_status   String?   @db.VarChar(50)
+  action      String    @db.VarChar(100)
+  actor_id    String?   @db.Uuid
+  actor_type  String?   @default("USER") @db.VarChar(50)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([task_id], map: "idx_workflow_task_history_task_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model workflow_tasks {
-  id_old                                                    Int                      @id @default(autoincrement())
-  title                                                     String                   @db.VarChar(500)
+  title                                                     String          @db.VarChar(500)
   description                                               String?
-  status                                                    String                   @default("OPEN") @db.VarChar(50)
-  priority                                                  String?                  @default("MEDIUM") @db.VarChar(20)
-  creator_id_old                                            String
-  assignee_id_old                                           String?
-  requires_approval                                         Boolean?                 @default(false)
-  approval_status                                           String?                  @default("NOT_REQUIRED") @db.VarChar(50)
-  approved_at                                               DateTime?                @db.Timestamp(6)
+  status                                                    String          @default("OPEN") @db.VarChar(50)
+  priority                                                  String?         @default("MEDIUM") @db.VarChar(20)
+  requires_approval                                         Boolean?        @default(false)
+  approval_status                                           String?         @default("NOT_REQUIRED") @db.VarChar(50)
+  approved_at                                               DateTime?       @db.Timestamp(6)
   approved_by                                               String?
-  due_date                                                  DateTime?                @db.Timestamp(6)
-  completed_at                                              DateTime?                @db.Timestamp(6)
-  progress                                                  Int?                     @default(0)
-  estimated_hours                                           Decimal?                 @db.Decimal(10, 2)
-  actual_hours                                              Decimal?                 @db.Decimal(10, 2)
+  due_date                                                  DateTime?       @db.Timestamp(6)
+  completed_at                                              DateTime?       @db.Timestamp(6)
+  progress                                                  Int?            @default(0)
+  estimated_hours                                           Decimal?        @db.Decimal(10, 2)
+  actual_hours                                              Decimal?        @db.Decimal(10, 2)
   organization_id                                           Int?
   department_id                                             Int?
-  tenant_id                                                 String?                  @db.Uuid
-  serial_number                                             String?                  @db.VarChar(50)
-  position                                                  Int?                     @default(0)
-  is_archived                                               Boolean?                 @default(false)
-  archived_at                                               DateTime?                @db.Timestamptz(6)
-  tags                                                      String[]                 @default([])
-  parent_task_id                                            String?                  @db.Uuid
-  created_at                                                DateTime?                @default(now()) @db.Timestamp(6)
-  updated_at                                                DateTime?                @default(now()) @db.Timestamp(6)
-  is_upward_assignment                                      Boolean?                 @default(false)
-  org_unit_id                                               String?                  @db.Uuid
-  is_confidential                                           Boolean?                 @default(false)
-  visibility_scope                                          String?                  @default("standard") @db.VarChar(50)
-  confidential_reason                                       String?                  @db.VarChar(255)
-  allowed_viewer_ids                                        String[]                 @default([]) @db.Uuid
-  cancel_requested_at                                       DateTime?                @db.Timestamptz(6)
-  cancel_requested_by                                       String?                  @db.Uuid
+  tenant_id                                                 String?         @db.Uuid
+  serial_number                                             String?         @db.VarChar(50)
+  position                                                  Int?            @default(0)
+  is_archived                                               Boolean?        @default(false)
+  archived_at                                               DateTime?       @db.Timestamptz(6)
+  tags                                                      String[]        @default([])
+  parent_task_id                                            String?         @db.Uuid
+  created_at                                                DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at                                                DateTime?       @default(now()) @db.Timestamp(6)
+  is_upward_assignment                                      Boolean?        @default(false)
+  org_unit_id                                               String?         @db.Uuid
+  is_confidential                                           Boolean?        @default(false)
+  visibility_scope                                          String?         @default("standard") @db.VarChar(50)
+  confidential_reason                                       String?         @db.VarChar(255)
+  allowed_viewer_ids                                        String[]        @default([]) @db.Uuid
+  cancel_requested_at                                       DateTime?       @db.Timestamptz(6)
+  cancel_requested_by                                       String?         @db.Uuid
   cancel_reason                                             String?
-  cancel_acknowledged_at                                    DateTime?                @db.Timestamptz(6)
-  cancel_acknowledged_by                                    String?                  @db.Uuid
-  id                                                        String                   @unique(map: "workflow_tasks_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  creator_id                                                String?                  @db.Uuid
-  assignee_id                                               String?                  @db.Uuid
-  approver_id                                               String?                  @db.Uuid
-  task_attachments                                          task_attachments[]
-  task_audit                                                task_audit[]
-  task_clarifications                                       task_clarifications[]
-  task_label_assignments                                    task_label_assignments[]
+  cancel_acknowledged_at                                    DateTime?       @db.Timestamptz(6)
+  cancel_acknowledged_by                                    String?         @db.Uuid
+  id                                                        String          @unique(map: "workflow_tasks_id_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creator_id                                                String?         @db.Uuid
+  assignee_id                                               String?         @db.Uuid
+  approver_id                                               String?         @db.Uuid
   task_messages                                             task_messages[]
-  task_participants                                         task_participants[]
   task_requests                                             task_requests[]
-  task_reviews                                              task_reviews[]
-  task_time_entries                                         task_time_entries[]
-  task_watchers                                             task_watchers[]
-  workflow_task_history                                     workflow_task_history[]
-  users_enhanced_workflow_tasks_assignee_idTousers_enhanced users_enhanced?          @relation("workflow_tasks_assignee_idTousers_enhanced", fields: [assignee_id], references: [id], onUpdate: NoAction, map: "fk_workflow_tasks_assignee_id")
-  users_enhanced_workflow_tasks_creator_idTousers_enhanced  users_enhanced?          @relation("workflow_tasks_creator_idTousers_enhanced", fields: [creator_id], references: [id], onUpdate: NoAction, map: "fk_workflow_tasks_creator_id")
-  org_units                                                 org_units?               @relation(fields: [org_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_enhanced_workflow_tasks_assignee_idTousers_enhanced users_enhanced? @relation("workflow_tasks_assignee_idTousers_enhanced", fields: [assignee_id], references: [id], onUpdate: NoAction, map: "fk_workflow_tasks_assignee_id")
+  users_enhanced_workflow_tasks_creator_idTousers_enhanced  users_enhanced? @relation("workflow_tasks_creator_idTousers_enhanced", fields: [creator_id], references: [id], onUpdate: NoAction, map: "fk_workflow_tasks_creator_id")
+  org_units                                                 org_units?      @relation(fields: [org_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([assignee_id_old], map: "idx_workflow_tasks_assigned_to")
-  @@index([assignee_id_old], map: "idx_workflow_tasks_assignee")
-  @@index([assignee_id_old], map: "idx_workflow_tasks_assignee_id")
-  @@index([assignee_id_old, status], map: "idx_workflow_tasks_assignee_status")
-  @@index([creator_id_old], map: "idx_workflow_tasks_creator_id")
-  @@index([creator_id_old, status], map: "idx_workflow_tasks_creator_status")
   @@index([due_date], map: "idx_workflow_tasks_due_date")
   @@index([parent_task_id], map: "idx_workflow_tasks_parent")
   @@index([position], map: "idx_workflow_tasks_position")

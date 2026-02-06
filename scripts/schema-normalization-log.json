@@ -1,0 +1,157 @@
+[
+  {
+    "timestamp": "2026-02-06T13:10:47.726Z",
+    "type": "INFO",
+    "message": "tenant_usage.tenant_id: Currently character varying, converting to UUID"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:47.850Z",
+    "type": "ERROR",
+    "message": "Convert tenant_usage.tenant_id to UUID: cannot alter type of a column used by a view or rule"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:48.398Z",
+    "type": "INFO",
+    "message": "tenant_usage_monthly.tenant_id: Currently character varying, converting to UUID"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:48.499Z",
+    "type": "ERROR",
+    "message": "Convert tenant_usage_monthly.tenant_id to UUID: ALTER action ALTER COLUMN ... SET DATA TYPE cannot be performed on relation \"tenant_usage_monthly\""
+  },
+  {
+    "timestamp": "2026-02-06T13:10:49.011Z",
+    "type": "INFO",
+    "message": "security_access_log.tenant_id: Currently text, converting to UUID"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:49.110Z",
+    "type": "ERROR",
+    "message": "Convert security_access_log.tenant_id to UUID: invalid input syntax for type uuid: \"\""
+  },
+  {
+    "timestamp": "2026-02-06T13:10:49.845Z",
+    "type": "WARN",
+    "message": "threads.id_old: Has 2 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:49.965Z",
+    "type": "SUCCESS",
+    "message": "Drop threads.id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.178Z",
+    "type": "WARN",
+    "message": "thread_messages.id_old: Has 3 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.295Z",
+    "type": "SUCCESS",
+    "message": "Drop thread_messages.id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.515Z",
+    "type": "WARN",
+    "message": "workflow_tasks.id_old: Has 13 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.628Z",
+    "type": "SUCCESS",
+    "message": "Drop workflow_tasks.id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.867Z",
+    "type": "WARN",
+    "message": "workflow_tasks.assignee_id_old: Has 4 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:50.978Z",
+    "type": "SUCCESS",
+    "message": "Drop workflow_tasks.assignee_id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:51.208Z",
+    "type": "WARN",
+    "message": "workflow_tasks.creator_id_old: Has 3 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:51.315Z",
+    "type": "SUCCESS",
+    "message": "Drop workflow_tasks.creator_id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:51.547Z",
+    "type": "WARN",
+    "message": "task_messages.id_old: Has 4 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:51.660Z",
+    "type": "SUCCESS",
+    "message": "Drop task_messages.id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.022Z",
+    "type": "WARN",
+    "message": "task_messages.task_id_old: Has 2 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.125Z",
+    "type": "SUCCESS",
+    "message": "Drop task_messages.task_id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.339Z",
+    "type": "WARN",
+    "message": "task_requests.id_old: Has 5 dependencies, using CASCADE"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.444Z",
+    "type": "SUCCESS",
+    "message": "Drop task_requests.id_old (CASCADE)"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.445Z",
+    "type": "INFO",
+    "message": "NOT NULL constraints require data cleanup first"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.445Z",
+    "type": "INFO",
+    "message": "Run data integrity check before enabling constraints"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.557Z",
+    "type": "SUCCESS",
+    "message": "users.tenant_id: No NULL values - ready for NOT NULL"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.664Z",
+    "type": "WARN",
+    "message": "workflow_tasks.tenant_id: 1 NULL values - fix before adding constraint"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.768Z",
+    "type": "INFO",
+    "message": "thread_members.id: Currently text"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.876Z",
+    "type": "WARN",
+    "message": "thread_members: 6 rows with non-UUID id values"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.876Z",
+    "type": "INFO",
+    "message": "Creating backup and generating UUIDs for invalid rows"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:52.984Z",
+    "type": "SUCCESS",
+    "message": "Generate UUIDs for invalid thread_members.id"
+  },
+  {
+    "timestamp": "2026-02-06T13:10:53.090Z",
+    "type": "SUCCESS",
+    "message": "Convert thread_members.id to UUID"
+  }
+]
