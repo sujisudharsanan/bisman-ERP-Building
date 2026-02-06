@@ -24,7 +24,7 @@ const { getPrimary, getReplica } = require('../../lib/prismaClients');
 async function getTenantUsage(tenantId, from, to) {
   const prisma = getReplica() || getPrimary();
   
-  const usage = await prisma.tenantUsage.findMany({
+  const usage = await prisma.tenant_usage.findMany({
     where: {
       tenantId,
       date: {
@@ -103,7 +103,7 @@ async function getAllTenantsUsage(from, to, options = {}) {
   const { limit = 100, sortBy = 'apiCalls', order = 'desc' } = options;
   
   // Aggregate by tenant
-  const usage = await prisma.tenantUsage.groupBy({
+  const usage = await prisma.tenant_usage.groupBy({
     by: ['tenantId'],
     where: {
       date: {
@@ -158,7 +158,7 @@ async function getUsageTrends(tenantId, days = 30) {
   const from = new Date();
   from.setDate(from.getDate() - days);
   
-  const usage = await prisma.tenantUsage.findMany({
+  const usage = await prisma.tenant_usage.findMany({
     where: {
       tenantId,
       date: {
@@ -235,7 +235,7 @@ async function getUsageTrends(tenantId, days = 30) {
 async function getFeatureUsage(tenantId, from, to) {
   const prisma = getReplica() || getPrimary();
   
-  const usage = await prisma.tenantUsage.findMany({
+  const usage = await prisma.tenant_usage.findMany({
     where: {
       tenantId,
       date: {
@@ -292,7 +292,7 @@ async function getTopConsumers(date = new Date(), limit = 10) {
   const dayStart = new Date(date);
   dayStart.setHours(0, 0, 0, 0);
   
-  const usage = await prisma.tenantUsage.findMany({
+  const usage = await prisma.tenant_usage.findMany({
     where: {
       date: dayStart,
     },
@@ -371,7 +371,7 @@ async function cleanupOldUsage(retentionDays = 365) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
   
-  const result = await prisma.tenantUsage.deleteMany({
+  const result = await prisma.tenant_usage.deleteMany({
     where: {
       date: {
         lt: cutoffDate,

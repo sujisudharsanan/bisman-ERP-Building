@@ -10,6 +10,15 @@ const { authenticate, setTenantContext } = require('../middleware/auth');
 const stripeService = require('../services/billing/stripeService');
 const prisma = require('../lib/prisma');
 
+// Helper: Calculate API calls from client_daily_usage fields
+function calculateApiCalls(usage) {
+  if (!usage) return 0;
+  return (usage.view_count || 0) + 
+         (usage.create_count || 0) + 
+         (usage.edit_count || 0) + 
+         (usage.delete_count || 0);
+}
+
 // All routes require authentication
 router.use(authenticate);
 router.use(setTenantContext);
@@ -778,7 +787,7 @@ router.get('/usage', async (req, res) => {
     });
 
     // Get daily usage for charts
-    const dailyUsage = await prisma.clientDailyUsage.findMany({
+    const dailyUsage = await prisma.client_daily_usage.findMany({
       where: {
         client_id: tenantId,
         usage_date: {
@@ -806,10 +815,13 @@ router.get('/usage', async (req, res) => {
         return acc;
       }, {}),
       daily: dailyUsage.map(d => ({
-        date: d.usage_date,
-        apiCalls: Number(d.api_calls || 0),
-        storageBytes: Number(d.storage_bytes || 0),
-        activeUsers: Number(d.active_users || 0)
+        date: d.date,
+        apiCalls: calculateApiCalls(d),
+        activeUsers: Number(d.active_users || 0),
+        viewCount: d.view_count || 0,
+        createCount: d.create_count || 0,
+        editCount: d.edit_count || 0,
+        deleteCount: d.delete_count || 0
       })),
       overageCharges: usageRecords
         .filter(r => Number(r.overageQuantity) > 0)
