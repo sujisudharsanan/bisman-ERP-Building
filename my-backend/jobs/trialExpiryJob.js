@@ -40,7 +40,7 @@ async function runTrialExpiryJob() {
 
   try {
     // Find tenants with expired trials that haven't been processed
-    const expiredTrials = await prisma.tenant.findMany({
+    const expiredTrials = await prisma.clients.findMany({
       where: {
         trial_expires_at: {
           lt: new Date()
@@ -249,7 +249,7 @@ async function sendExpiryWarnings(stats) {
   oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
 
   // Find trials expiring in next 3 days
-  const expiringTrials = await prisma.tenant.findMany({
+  const expiringTrials = await prisma.clients.findMany({
     where: {
       trial_expires_at: {
         gt: new Date(),

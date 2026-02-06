@@ -212,7 +212,7 @@ async function updateInactiveTenantsStorage(date, activeTenantIds) {
   dateOnly.setUTCHours(0, 0, 0, 0);
 
   // Get all tenants not in active list
-  const inactiveTenants = await prisma.tenant.findMany({
+  const inactiveTenants = await prisma.clients.findMany({
     where: {
       id: {
         notIn: activeTenantIds
